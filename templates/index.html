@@ -1,0 +1,1442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AR Dashboard · Wellbeing Nutrition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy:      #1a3c6e;
+    --navy-dark: #122d54;
+    --navy-mid:  #234e8a;
+    --accent:    #3a6fd8;
+    --red:       #c0392b;
+    --green:     #0f6e56;
+    --orange:    #b45309;
+    --purple:    #6d28d9;
+    --bg:        #eef2f8;
+    --card:      #ffffff;
+    --border:    #d5dff0;
+    --muted:     #6b7a99;
+    --text:      #1c2640;
+    --gradient:  linear-gradient(135deg, #1a3c6e 0%, #234e8a 55%, #1e6091 100%);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    background: linear-gradient(90deg, #0b5e48, #1a3c6e);
+    color: rgba(255,255,255,.75);
+    text-align: center; font-size: 11.5px; font-weight: 500;
+    padding: 7px 20px; letter-spacing: 0.3px;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--gradient);
+    padding: 0 40px; height: 95px;
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 4px 20px rgba(0,0,0,.22);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 18px; }
+  .logo-wrap { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+  .logo-img { height: 70px; width: auto; object-fit: contain; filter: brightness(0) invert(1); }
+  .logo-text-wrap { display: flex; flex-direction: column; line-height: 1.2; }
+  .logo-company { font-size: 17px; font-weight: 800; color: #fff; letter-spacing: -.3px; }
+  .logo-tagline { font-size: 10px; font-weight: 400; color: rgba(255,255,255,.55); letter-spacing: 1.4px; text-transform: uppercase; }
+  .header-divider { width: 1px; height: 32px; background: rgba(255,255,255,.22); }
+  .header-module { font-size: 22px; font-weight: 700; color: rgba(255,255,255,.95); }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    background: rgba(255,255,255,.11); border: 1px solid rgba(255,255,255,.18);
+    color: #c8d9f5; font-size: 11.5px; font-weight: 500;
+    padding: 5px 14px; border-radius: 20px; font-family: 'JetBrains Mono', monospace;
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 6px #4ade80; flex-shrink: 0; }
+  .status-dot.loading { background: #fbbf24; box-shadow: 0 0 6px #fbbf24; animation: pulse 1.1s infinite; }
+  .status-dot.error   { background: #f87171; box-shadow: 0 0 6px #f87171; }
+  @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+
+  /* ── HERO ── */
+  .hero {
+    background: linear-gradient(135deg, #0f2545 0%, #1a3c6e 45%, #1e6091 100%);
+    padding: 44px 40px 36px; position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content:''; position:absolute; top:-80px; right:-80px;
+    width:320px; height:320px; border-radius:50%;
+    background:rgba(255,255,255,.04); pointer-events:none;
+  }
+  .hero-inner { max-width: 1140px; margin: 0 auto; position: relative; z-index: 1; }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.2);
+    color: #a5c8ff; font-size: 10.5px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 14px;
+  }
+  .hero h1 { font-size: 32px; font-weight: 800; color: #fff; letter-spacing: -.5px; line-height: 1.15; margin-bottom: 10px; }
+  .hero h1 span { color: #7eb3ff; }
+  .hero-sub { font-size: 14px; color: rgba(255,255,255,.58); font-weight: 400; }
+
+  /* ── PAGE ── */
+  .page { max-width: 1140px; margin: 0 auto; padding: 34px 24px 80px; }
+
+  .section-label {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.2px; color: var(--muted); margin-bottom: 14px;
+  }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 16px; padding: 28px 32px;
+    box-shadow: 0 2px 20px rgba(26,60,110,.07);
+  }
+
+  /* ── FILTERS ── */
+  .filter-grid-top    { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .filter-grid-bottom { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 22px; }
+  @media(max-width:700px){
+    .filter-grid-top,.filter-grid-bottom { grid-template-columns:1fr; }
+    .hero h1 { font-size:22px; }
+    header { padding:0 18px; }
+  }
+  .field label {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .7px; color: var(--muted); margin-bottom: 7px;
+  }
+  .field select, .field input {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'Inter', sans-serif; font-size: 13px;
+    color: var(--text); background: #f8fafd; outline: none;
+    transition: border-color .18s, box-shadow .18s; appearance: none; cursor: pointer;
+  }
+  .field select:focus, .field input:focus {
+    border-color: var(--accent); background: #fff; box-shadow: 0 0 0 3px rgba(58,111,216,.12);
+  }
+  .field.aging-field select { border-color: #c4b5fd; background: #faf5ff; }
+  .field.aging-field select:focus { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(109,40,217,.1); }
+  .field.aging-field label { color: var(--purple); }
+  .aging-badge { font-size: 9px; font-weight: 700; background: var(--purple); color: #fff; padding: 2px 7px; border-radius: 20px; }
+
+  /* ── AUTOCOMPLETE ── */
+  .autocomplete-wrap { position: relative; }
+  .autocomplete-wrap input {
+    width: 100%; padding: 10px 14px;
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'Inter', sans-serif; font-size: 13px;
+    color: var(--text); background: #f8fafd; outline: none;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  .autocomplete-wrap input:focus {
+    border-color: var(--accent); background: #fff;
+    box-shadow: 0 0 0 3px rgba(58,111,216,.12);
+  }
+  .autocomplete-dropdown {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #fff; border: 1.5px solid var(--border);
+    border-radius: 10px; box-shadow: 0 8px 24px rgba(26,60,110,.12);
+    z-index: 200; max-height: 220px; overflow-y: auto;
+  }
+  .autocomplete-dropdown.open { display: block; }
+  .ac-item {
+    padding: 9px 14px; font-size: 13px; cursor: pointer;
+    color: var(--text); border-bottom: 1px solid #f0f4fb;
+    transition: background .1s;
+  }
+  .ac-item:last-child { border-bottom: none; }
+  .ac-item:hover, .ac-item.active { background: #eef4ff; color: var(--navy); }
+  .ac-item mark { background: none; color: var(--accent); font-weight: 700; }
+  .ac-clear {
+    position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+    font-size: 16px; color: var(--muted); cursor: pointer; display: none;
+    line-height: 1; padding: 2px 4px;
+  }
+  .ac-clear:hover { color: var(--red); }
+
+  .active-filters { display:none; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .active-filters.visible { display:flex; }
+  .filter-chip {
+    display:inline-flex; align-items:center; gap:5px;
+    background:#ede9fe; color:var(--purple);
+    font-size:11px; font-weight:600; padding:4px 11px; border-radius:20px; border:1px solid #c4b5fd;
+  }
+  .filter-chip .chip-x { cursor:pointer; font-size:13px; opacity:.65; }
+  .filter-chip .chip-x:hover { opacity:1; }
+
+  /* ── BUTTONS ── */
+  .btn-row { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  .btn {
+    display:inline-flex; align-items:center; gap:8px;
+    padding:10px 22px; border:none; border-radius:10px;
+    font-family:'Inter',sans-serif; font-size:13px; font-weight:600;
+    cursor:pointer; transition:all .18s;
+  }
+  .btn svg { width:15px; height:15px; flex-shrink:0; }
+  .btn-primary { background:var(--navy); color:#fff; box-shadow:0 2px 8px rgba(26,60,110,.25); }
+  .btn-primary:hover { background:var(--navy-mid); transform:translateY(-1px); box-shadow:0 6px 18px rgba(26,60,110,.35); }
+  .btn-secondary { background:#f0f4fb; color:var(--navy); border:1.5px solid var(--border); }
+  .btn-secondary:hover { background:#e2eaf8; }
+  .btn-draft { background:linear-gradient(135deg,#b45309,#d97706); color:#fff; margin-left:auto; box-shadow:0 2px 10px rgba(180,83,9,.3); }
+  .btn-draft:hover { background:linear-gradient(135deg,#92400e,#b45309); transform:translateY(-1px); box-shadow:0 6px 18px rgba(180,83,9,.4); }
+  .btn-draft:disabled { background:#d1d5db; color:#9ca3af; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn-send { background:linear-gradient(135deg,#0f6e56,#10b981); color:#fff; box-shadow:0 2px 10px rgba(15,110,86,.3); }
+  .btn-send:hover { background:linear-gradient(135deg,#0d5d48,#0f6e56); transform:translateY(-1px); }
+  .btn-send:disabled { background:#d1d5db; color:#9ca3af; cursor:not-allowed; transform:none; box-shadow:none; }
+  .btn-cancel { background:#f3f4f6; color:#374151; border:1.5px solid #e5e7eb; }
+  .btn-cancel:hover { background:#e5e7eb; }
+  .btn-edit-toggle {
+    background: rgba(58,111,216,.1); color: var(--accent);
+    border: 1.5px solid rgba(58,111,216,.25);
+    font-size: 12px; padding: 6px 14px; border-radius: 8px;
+  }
+  .btn-edit-toggle:hover { background: rgba(58,111,216,.18); }
+  .btn-edit-toggle.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ── SUMMARY STRIP ── */
+  .summary-strip { display:none; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:24px; }
+  .summary-strip.visible { display:grid; }
+  @media(max-width:680px){ .summary-strip { grid-template-columns:1fr 1fr; } }
+  .summary-card {
+    background:var(--card); border:1px solid var(--border); border-radius:14px;
+    padding:18px 20px; box-shadow:0 2px 12px rgba(26,60,110,.06);
+    position:relative; overflow:hidden;
+  }
+  .summary-card::before { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+  .sc-total::before  { background:linear-gradient(90deg,var(--red),#e74c3c); }
+  .sc-unused::before { background:linear-gradient(90deg,var(--green),#10b981); }
+  .sc-net::before    { background:linear-gradient(90deg,var(--navy),var(--accent)); }
+  .sc-count::before  { background:linear-gradient(90deg,var(--purple),#8b5cf6); }
+  .sc-label { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.8px; color:var(--muted); margin-bottom:8px; }
+  .sc-value { font-size:19px; font-weight:700; font-family:'JetBrains Mono',monospace; }
+  .sc-total  .sc-value { color:var(--red); }
+  .sc-unused .sc-value { color:var(--green); }
+  .sc-net    .sc-value { color:var(--navy); }
+  .sc-count  .sc-value { color:var(--purple); }
+
+  /* ── RESULTS TABLE ── */
+  .results-wrap {
+    display:none; background:var(--card); border:1px solid var(--border);
+    border-radius:16px; overflow:hidden;
+    box-shadow:0 2px 20px rgba(26,60,110,.07); margin-bottom:28px;
+  }
+  .results-wrap.visible { display:block; }
+  .results-header {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 24px 16px; border-bottom:1px solid var(--border);
+    background:linear-gradient(135deg,#f8faff,#f0f4fb);
+  }
+  .results-header h3 { font-size:14px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:8px; }
+  .rec-badge { background:var(--navy); color:#fff; font-size:11px; font-weight:600; padding:2px 9px; border-radius:20px; font-family:'JetBrains Mono',monospace; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; }
+  thead tr { background:linear-gradient(135deg,var(--navy),var(--navy-mid)); }
+  thead th { padding:11px 16px; text-align:left; font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; color:rgba(255,255,255,.85); white-space:nowrap; }
+  thead th.right { text-align:right; } thead th.center { text-align:center; }
+  tbody tr { border-bottom:1px solid #eef1f8; transition:background .12s; }
+  tbody tr:nth-child(even) { background:#f9fbff; }
+  tbody tr:hover { background:#eef4ff; }
+  tbody tr:last-child { border-bottom:none; }
+  tbody td { padding:11px 16px; vertical-align:middle; }
+  tbody td.right { text-align:right; font-family:'JetBrains Mono',monospace; font-size:12px; }
+  tbody td.center { text-align:center; }
+  .inv-chip {
+    display:inline-block; background:linear-gradient(135deg,#eef2f8,#e4ecf8);
+    color:var(--navy); font-family:'JetBrains Mono',monospace;
+    font-size:11px; font-weight:500; padding:3px 9px; border-radius:6px; border:1px solid #c8d8ee;
+  }
+  .age-critical { color:#7c2d12; font-weight:700; }
+  .age-high     { color:#a32d2d; font-weight:700; }
+  .age-medium   { color:#b45309; font-weight:600; }
+  .age-low      { color:var(--navy); font-weight:500; }
+
+  /* ══════════════════════════════════════════════════════════════════
+     DRAFT PANEL — full redesign with edit mode
+  ══════════════════════════════════════════════════════════════════ */
+  .draft-panel {
+    display:none; background:var(--card);
+    border:2px solid #d97706; border-radius:16px; overflow:hidden;
+    box-shadow:0 8px 32px rgba(180,83,9,.18); margin-bottom:28px;
+  }
+  .draft-panel.visible { display:block; }
+
+  /* Header */
+  .draft-header {
+    background:linear-gradient(135deg,#b45309,#d97706);
+    color:#fff; padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .draft-header-left { display:flex; align-items:center; gap:12px; }
+  .draft-header-icon { width:42px; height:42px; background:rgba(255,255,255,.15); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:20px; }
+  .draft-title { font-size:15px; font-weight:700; }
+  .draft-sub   { font-size:12px; opacity:.8; margin-top:2px; }
+  .draft-header-right { display:flex; align-items:center; gap:10px; }
+  .draft-step-badge { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:11px; font-weight:600; padding:4px 13px; border-radius:20px; }
+
+  /* Tabs */
+  .draft-tabs { display:flex; border-bottom:1px solid var(--border); background:#fef9f0; overflow-x:auto; }
+  .draft-tab { padding:11px 20px; font-size:13px; font-weight:500; cursor:pointer; border-bottom:3px solid transparent; color:var(--muted); transition:all .15s; white-space:nowrap; flex-shrink:0; }
+  .draft-tab.active { border-bottom-color:#d97706; color:#b45309; font-weight:700; background:rgba(180,83,9,.04); }
+  .draft-tab:hover:not(.active) { color:var(--text); background:rgba(0,0,0,.02); }
+
+  /* ── META SECTION (To/CC/Subject/PDFs) ── */
+  .draft-meta {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    background: #fffbf4;
+  }
+  .meta-grid { display: grid; grid-template-columns: 90px 1fr; gap: 10px 12px; align-items: start; }
+  .meta-label {
+    font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .6px; color: var(--muted); padding-top: 9px;
+  }
+  .meta-value {
+    font-size: 13px; color: var(--text); padding: 7px 0;
+    line-height: 1.5; word-break: break-all;
+  }
+
+  /* Editable inputs inside meta */
+  .meta-input {
+    width: 100%; padding: 7px 11px;
+    border: 1.5px solid var(--border); border-radius: 8px;
+    font-family: 'Inter', sans-serif; font-size: 13px; color: var(--text);
+    background: #fff; outline: none;
+    transition: border-color .18s, box-shadow .18s;
+  }
+  .meta-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(58,111,216,.1); }
+  .meta-input:disabled { background: #f8fafd; color: var(--muted); cursor: default; border-color: transparent; padding-left: 0; }
+
+  /* CC tags container */
+  .cc-tags-wrap {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    min-height: 36px; padding: 4px 0;
+  }
+  .cc-tag {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #eef2f8; color: var(--navy);
+    font-size: 12px; font-weight: 500;
+    padding: 4px 10px; border-radius: 20px;
+    border: 1px solid #c8d8ee;
+  }
+  /* visibility of remove button is set directly via JS */
+  .cc-tag .cc-remove {
+    cursor: pointer; color: var(--muted);
+    font-size: 15px; font-weight: 700; line-height: 1;
+  }
+  .cc-tag .cc-remove:hover { color: var(--red); }
+  .cc-add-input {
+    border: 1.5px solid var(--border); border-radius: 8px;
+    padding: 5px 11px; outline: none;
+    font-family: 'Inter', sans-serif; font-size: 12px;
+    color: var(--text); background: #fff; min-width: 210px;
+  }
+  .cc-add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(58,111,216,.1); }
+  .cc-add-input::placeholder { color: var(--muted); }
+
+  /* PDF list */
+  .pdf-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
+  .pdf-tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: #f0fdf4; color: var(--green);
+    font-size: 11.5px; font-weight: 500;
+    padding: 3px 10px; border-radius: 20px;
+    border: 1px solid #bbf7d0; font-family: 'JetBrains Mono', monospace;
+  }
+  .pdf-tag.missing {
+    background: #fef9c3; color: #92400e; border-color: #fde68a;
+  }
+  .pdf-count-badge {
+    font-size: 12px; font-weight: 600; color: var(--green);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* Warning row */
+  .warning-row {
+    margin-top: 10px; padding: 8px 12px; border-radius: 8px;
+    background: #fef9c3; border: 1px solid #fde68a;
+    font-size: 12px; color: #92400e; display: flex; gap: 8px; align-items: flex-start;
+  }
+  .warning-row.hidden { display: none; }
+
+  /* ── EMAIL BODY AREA ── */
+  .draft-body-area {
+    border-top: 1px solid var(--border);
+    background: #fff;
+  }
+  .draft-body-toolbar {
+    display: none;
+    padding: 10px 24px;
+    border-bottom: 1px solid #f0f4fb;
+    background: #f8faff;
+    gap: 6px; flex-wrap: wrap; align-items: center;
+  }
+  .draft-body-toolbar.visible { display: flex; }
+  .toolbar-btn {
+    padding: 5px 10px; border: 1.5px solid var(--border); border-radius: 6px;
+    background: #fff; font-size: 12px; font-family: 'Inter', sans-serif;
+    font-weight: 600; cursor: pointer; color: var(--text);
+    transition: background .15s, border-color .15s;
+  }
+  .toolbar-btn:hover { background: #eef2f8; border-color: var(--accent); }
+  .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
+
+  /* iframe preview */
+  .draft-iframe-wrap { display: block; }
+  .draft-iframe-wrap iframe { width:100%; border:none; min-height:500px; background:#fff; display:block; }
+
+  /* contenteditable body */
+  .draft-editable-body {
+    display: none;
+    min-height: 500px;
+    padding: 20px 32px;
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    color: #222;
+    outline: none;
+    line-height: 1.6;
+    background: #fff;
+  }
+  .draft-editable-body:focus { outline: none; }
+
+  /* ── DRAFT ACTIONS ── */
+  .draft-actions {
+    padding: 18px 24px; border-top: 2px solid #fde68a;
+    display: flex; gap: 12px; align-items: center;
+    background: linear-gradient(135deg,#fffbeb,#fef9f0);
+    flex-wrap: wrap;
+  }
+  .draft-actions .warn-text {
+    font-size: 11.5px; color: #92400e; font-weight: 500;
+    margin-left: auto; display: flex; align-items: center; gap: 5px;
+  }
+
+  /* ── STATE MSG ── */
+  .state-msg { text-align:center; padding:56px 20px; color:var(--muted); font-size:13.5px; }
+  .state-msg .icon { font-size:40px; margin-bottom:12px; opacity:.6; }
+  .state-msg strong { color:var(--text); }
+
+  /* ── TOAST ── */
+  .toast {
+    position:fixed; bottom:28px; right:28px; background:var(--navy); color:#fff;
+    padding:13px 18px 13px 15px; border-radius:12px;
+    font-size:13px; font-weight:500; box-shadow:0 8px 28px rgba(0,0,0,.24);
+    transform:translateY(100px) scale(.95); opacity:0;
+    transition:all .3s cubic-bezier(.34,1.56,.64,1);
+    z-index:999; max-width:400px; display:flex; align-items:flex-start; gap:10px;
+  }
+  .toast.show { transform:translateY(0) scale(1); opacity:1; }
+  .toast.success { background:linear-gradient(135deg,#0f6e56,#10b981); }
+  .toast.error   { background:linear-gradient(135deg,#c0392b,#e74c3c); }
+  .toast-icon { font-size:16px; flex-shrink:0; margin-top:1px; }
+
+  .spinner { width:16px; height:16px; border:2px solid rgba(255,255,255,.3); border-top-color:#fff; border-radius:50%; animation:spin .6s linear infinite; display:none; flex-shrink:0; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── FOOTER ── */
+  footer { background:var(--navy-dark); color:rgba(255,255,255,.4); text-align:center; font-size:11.5px; padding:22px; letter-spacing:.3px; }
+  footer strong { color:rgba(255,255,255,.65); }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  🔒 Internal Tool &nbsp;·&nbsp; Accounts Receivable Automation
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <a class="logo-wrap" href="/">
+      <img class="logo-img" src="/static/logo.png" alt="Wellbeing Nutrition"
+           onerror="this.style.display='none'; document.getElementById('logoFallback').style.display='flex';"/>
+      <div class="logo-text-wrap" id="logoFallback" style="display:none;">
+        <span class="logo-company">Wellbeing Nutrition</span>
+        <span class="logo-tagline">Finance &amp; Accounts</span>
+      </div>
+    </a>
+    <div class="header-divider"></div>
+    <span class="header-module">AR Dashboard</span>
+  </div>
+  <div class="header-right">
+    <div class="status-pill">
+      <div class="status-dot loading" id="statusDot"></div>
+      <span id="dataStatus">Loading…</span>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">📊 Finance Module</div>
+    <h1>Accounts Receivable<br/><span>Invoice Lookup</span></h1>
+    <p class="hero-sub">Search overdue invoices &nbsp;·&nbsp; Preview &amp; edit email drafts &nbsp;·&nbsp; Send to salespersons</p>
+  </div>
+</div>
+
+<!-- PAGE BODY -->
+<div class="page">
+
+  <!-- Search Filters -->
+  <div class="section-label">🔍 Search Filters</div>
+  <div class="card" style="margin-bottom:28px;">
+    <div class="filter-grid-top">
+      <div class="field">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Customer Name
+        </label>
+        <div class="autocomplete-wrap" id="acWrapCustomer">
+          <input type="text" id="selCustomer" placeholder="Search customer…" autocomplete="off" oninput="acFilter('Customer')" onfocus="acOpen('Customer')" onkeydown="acKey(event,'Customer')"/>
+          <span class="ac-clear" id="acClearCustomer" onclick="acClear('Customer')">×</span>
+          <div class="autocomplete-dropdown" id="acDropCustomer"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          Salesperson
+        </label>
+        <div class="autocomplete-wrap" id="acWrapSalesperson">
+          <input type="text" id="selSalesperson" placeholder="Search salesperson…" autocomplete="off" oninput="acFilter('Salesperson')" onfocus="acOpen('Salesperson')" onkeydown="acKey(event,'Salesperson')"/>
+          <span class="ac-clear" id="acClearSalesperson" onclick="acClear('Salesperson')">×</span>
+          <div class="autocomplete-dropdown" id="acDropSalesperson"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+          Invoice Number
+        </label>
+        <select id="selInvoice"><option value="">— All Invoices —</option></select>
+      </div>
+    </div>
+    <div class="filter-grid-bottom">
+      <div class="field aging-field">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+          Aging Bucket <span class="aging-badge">OVERDUE DAYS</span>
+        </label>
+        <select id="selAging" onchange="onAgingChange()">
+          <option value="">— All Overdue Days —</option>
+        </select>
+      </div>
+      <div></div>
+    </div>
+    <div class="active-filters" id="activeFilters"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="doSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        Search Invoices
+      </button>
+      <button class="btn btn-secondary" onclick="clearSearch()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>
+        Clear
+      </button>
+      <button class="btn btn-draft" id="btnDraft" onclick="doDraft()" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        <span id="btnDraftLabel">Preview Draft</span>
+        <div class="spinner" id="draftSpinner"></div>
+      </button>
+    </div>
+  </div>
+
+  <!-- Summary Strip -->
+  <div class="summary-strip" id="summaryStrip">
+    <div class="summary-card sc-count"><div class="sc-label">Invoices Found</div><div class="sc-value" id="sumCount">—</div></div>
+    <div class="summary-card sc-total"><div class="sc-label">Total Outstanding</div><div class="sc-value" id="sumTotal">—</div></div>
+    <div class="summary-card sc-unused"><div class="sc-label">Unused Credit</div><div class="sc-value" id="sumUnused">—</div></div>
+    <div class="summary-card sc-net"><div class="sc-label">Net Outstanding</div><div class="sc-value" id="sumNet">—</div></div>
+  </div>
+
+  <!-- Results Table -->
+  <div class="results-wrap" id="resultsWrap">
+    <div class="results-header">
+      <h3>📋 Invoice Records <span class="rec-badge" id="recCount"></span></h3>
+    </div>
+    <div id="tableArea">
+      <div class="state-msg">
+        <div class="icon">📋</div>
+        <strong>No results yet.</strong><br/>Use the filters above and click Search.
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       DRAFT PREVIEW PANEL (with edit mode)
+  ══════════════════════════════════════════════════════ -->
+  <div class="draft-panel" id="draftPanel">
+
+    <!-- Header -->
+    <div class="draft-header">
+      <div class="draft-header-left">
+        <div class="draft-header-icon">📧</div>
+        <div>
+          <div class="draft-title">Email Draft Preview</div>
+          <div class="draft-sub" id="draftSubtitle">Review carefully before sending</div>
+        </div>
+      </div>
+      <div class="draft-header-right">
+        <button class="btn btn-edit-toggle" id="btnToggleEdit" onclick="toggleEditMode()">
+          ✏️ Edit Draft
+        </button>
+        <div class="draft-step-badge">Step 2 of 2 — Review &amp; Send</div>
+      </div>
+    </div>
+
+    <!-- Tabs (one per salesperson) -->
+    <div class="draft-tabs" id="draftTabs"></div>
+
+    <!-- Meta: To / CC / Subject / PDFs — editable when in edit mode -->
+    <div class="draft-meta" id="draftMeta">
+      <div class="meta-grid">
+
+        <span class="meta-label">To</span>
+        <div>
+          <div class="meta-value" id="metaToView"></div>
+          <input class="meta-input" id="metaToInput" type="email" placeholder="recipient@example.com" style="display:none;"/>
+        </div>
+
+        <span class="meta-label">CC</span>
+        <div>
+          <!-- Single CC area — JS shows/hides remove buttons and add input -->
+          <div class="cc-tags-wrap" id="ccTagsWrap"></div>
+          <input class="cc-add-input" id="ccAddInput" type="email"
+                 placeholder="+ Add CC email, press Enter" style="display:none; margin-top:6px;"/>
+        </div>
+
+        <span class="meta-label">Subject</span>
+        <div>
+          <div class="meta-value" id="metaSubjectView"></div>
+          <input class="meta-input" id="metaSubjectInput" type="text" placeholder="Email subject" style="display:none;"/>
+        </div>
+
+        <span class="meta-label">PDFs</span>
+        <div>
+          <div class="pdf-list" id="pdfList"></div>
+        </div>
+
+      </div>
+      <div class="warning-row hidden" id="warningRow">
+        <span>⚠</span><span id="warningText"></span>
+      </div>
+    </div>
+
+    <!-- Email body -->
+    <div class="draft-body-area">
+      <!-- Formatting toolbar (only shown in edit mode) -->
+      <div class="draft-body-toolbar" id="bodyToolbar">
+        <span style="font-size:11px;color:var(--muted);font-weight:600;margin-right:4px;">FORMAT:</span>
+        <button class="toolbar-btn" onclick="execFmt('bold')"><b>B</b></button>
+        <button class="toolbar-btn" onclick="execFmt('italic')"><i>I</i></button>
+        <button class="toolbar-btn" onclick="execFmt('underline')"><u>U</u></button>
+        <div class="toolbar-sep"></div>
+        <button class="toolbar-btn" onclick="execFmt('insertUnorderedList')">• List</button>
+        <button class="toolbar-btn" onclick="execFmt('insertOrderedList')">1. List</button>
+        <div class="toolbar-sep"></div>
+        <button class="toolbar-btn" onclick="execFmt('removeFormat')">Clear Format</button>
+        <div style="margin-left:auto;font-size:11px;color:var(--muted);">
+          ⚠ Note: Only edit the greeting/closing text. Invoice tables are auto-generated.
+        </div>
+      </div>
+
+      <!-- Read-only iframe (shown when NOT in edit mode) -->
+      <div class="draft-iframe-wrap" id="draftIframeWrap">
+        <iframe id="draftIframe" sandbox="allow-same-origin"></iframe>
+      </div>
+
+      <!-- Contenteditable div (shown when IN edit mode) -->
+      <div class="draft-editable-body" id="draftEditableBody" contenteditable="true"></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="draft-actions">
+      <button class="btn btn-cancel" onclick="cancelDraft()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        Cancel
+      </button>
+      <button class="btn btn-secondary" id="btnSaveEdits" onclick="saveEdits()" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Changes
+      </button>
+      <button class="btn btn-send" id="btnConfirmSend" onclick="doConfirmSend()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+        <span id="btnConfirmLabel">Confirm &amp; Send</span>
+        <div class="spinner" id="sendSpinner"></div>
+      </button>
+      <div class="warn-text">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        Email sends immediately on confirmation
+      </div>
+    </div>
+
+  </div><!-- /draft-panel -->
+
+</div><!-- /page -->
+
+<footer>
+  <strong>Wellbeing Nutrition</strong> &nbsp;·&nbsp; AR Invoice Dashboard
+</footer>
+
+<div class="toast" id="toast">
+  <span class="toast-icon" id="toastIcon"></span>
+  <span id="toastMsg"></span>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════════════════════════ */
+let currentRecords  = [];
+let currentDraftId  = null;
+let currentPreviews = [];   // array of preview objects from server
+let activeTabIndex  = 0;
+let isEditMode      = false;
+
+// Local edits per tab: { tabIndex -> { to, ccList, subject, bodyHtml } }
+let localEdits = {};
+
+/* ══════════════════════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', async () => {
+  const dot    = document.getElementById('statusDot');
+  const status = document.getElementById('dataStatus');
+  try {
+    const res  = await fetch('/api/options');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    populateAc('Customer',    data.customers);
+    populateAc('Salesperson', data.salespersons);
+    populate('selInvoice',    data.invoices);
+    populateAging(data.aging_buckets);
+    dot.classList.remove('loading');
+    status.textContent = `${data.invoices.length} invoices loaded`;
+  } catch(e) {
+    dot.classList.remove('loading');
+    dot.classList.add('error');
+    status.textContent = 'Error loading data';
+    showToast('Could not load data: ' + e.message, 'error');
+  }
+});
+
+// ── Autocomplete data store ──
+const acData = { Customer: [], Salesperson: [] };
+let   acActiveIdx = { Customer: -1, Salesperson: -1 };
+
+function populate(id, items) {
+  // For invoice — keep as hidden select for compatibility
+  if (id === 'selInvoice') {
+    const sel = document.getElementById(id);
+    items.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
+  }
+}
+
+function populateAc(field, items) {
+  acData[field] = items;
+  renderAcDropdown(field, items);
+}
+
+function renderAcDropdown(field, items, query='') {
+  const drop = document.getElementById(`acDrop${field}`);
+  const q    = query.trim().toLowerCase();
+  const filtered = q ? items.filter(i => i.toLowerCase().includes(q)) : items;
+  if (!filtered.length) {
+    drop.innerHTML = `<div class="ac-item" style="color:var(--muted);">No results found</div>`;
+  } else {
+    drop.innerHTML = filtered.slice(0, 80).map((item, idx) => {
+      const hl = q ? item.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>') : item;
+      return `<div class="ac-item" data-val="${item}" data-idx="${idx}" onmousedown="acSelect('${field}','${item.replace(/'/g,"\'")}')">
+        ${hl}
+      </div>`;
+    }).join('');
+  }
+  acActiveIdx[field] = -1;
+}
+
+function acFilter(field) {
+  const inp   = document.getElementById(`sel${field}`);
+  const query = inp.value;
+  renderAcDropdown(field, acData[field], query);
+  document.getElementById(`acDrop${field}`).classList.add('open');
+  document.getElementById(`acClear${field}`).style.display = query ? 'block' : 'none';
+}
+
+function acOpen(field) {
+  const inp = document.getElementById(`sel${field}`);
+  renderAcDropdown(field, acData[field], inp.value);
+  document.getElementById(`acDrop${field}`).classList.add('open');
+}
+
+function acSelect(field, value) {
+  document.getElementById(`sel${field}`).value = value;
+  document.getElementById(`acDrop${field}`).classList.remove('open');
+  document.getElementById(`acClear${field}`).style.display = 'block';
+}
+
+function acClear(field) {
+  document.getElementById(`sel${field}`).value = '';
+  document.getElementById(`acDrop${field}`).classList.remove('open');
+  document.getElementById(`acClear${field}`).style.display = 'none';
+  renderAcDropdown(field, acData[field], '');
+}
+
+function acKey(e, field) {
+  const drop  = document.getElementById(`acDrop${field}`);
+  const items = drop.querySelectorAll('.ac-item[data-val]');
+  if (!items.length) return;
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    acActiveIdx[field] = Math.min(acActiveIdx[field] + 1, items.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    acActiveIdx[field] = Math.max(acActiveIdx[field] - 1, 0);
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    const active = drop.querySelector('.ac-item.active');
+    if (active) acSelect(field, active.dataset.val);
+    else drop.classList.remove('open');
+    return;
+  } else if (e.key === 'Escape') {
+    drop.classList.remove('open'); return;
+  }
+  items.forEach((el, i) => el.classList.toggle('active', i === acActiveIdx[field]));
+  if (acActiveIdx[field] >= 0) items[acActiveIdx[field]].scrollIntoView({ block:'nearest' });
+}
+
+// Close dropdowns on outside click
+document.addEventListener('click', e => {
+  ['Customer','Salesperson'].forEach(field => {
+    const wrap = document.getElementById(`acWrap${field}`);
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById(`acDrop${field}`).classList.remove('open');
+    }
+  });
+});
+function populateAging(buckets) {
+  const sel = document.getElementById('selAging');
+  buckets.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; sel.appendChild(o); });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   FILTER CHIPS
+══════════════════════════════════════════════════════════════════ */
+function onAgingChange() {
+  const aging = document.getElementById('selAging').value;
+  const el    = document.getElementById('activeFilters');
+  if (aging) {
+    el.innerHTML = `<div class="filter-chip">⏱ ${aging}<span class="chip-x" onclick="clearAgingFilter()">✕</span></div>`;
+    el.classList.add('visible');
+  } else { el.innerHTML = ''; el.classList.remove('visible'); }
+}
+function clearAgingFilter() { document.getElementById('selAging').value = ''; onAgingChange(); }
+
+/* ══════════════════════════════════════════════════════════════════
+   SEARCH
+══════════════════════════════════════════════════════════════════ */
+async function doSearch() {
+  const customer    = document.getElementById('selCustomer').value;
+  const salesperson = document.getElementById('selSalesperson').value;
+  const invoice     = document.getElementById('selInvoice').value;
+  const aging       = document.getElementById('selAging').value;
+  if (!customer && !salesperson && !invoice && !aging) { showToast('Please select at least one filter.', 'error'); return; }
+
+  const params = new URLSearchParams();
+  if (customer)    params.set('customer',    customer);
+  if (salesperson) params.set('salesperson', salesperson);
+  if (invoice)     params.set('invoice',     invoice);
+  if (aging)       params.set('aging',       aging);
+
+  try {
+    const res  = await fetch('/api/search?' + params);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentRecords = data.records;
+    hideDraftPanel();
+    renderResults(data.records, data.summary);
+  } catch(e) { showToast('Search failed: ' + e.message, 'error'); }
+}
+
+function clearSearch() {
+  document.getElementById('selCustomer').value    = '';
+  document.getElementById('selSalesperson').value = '';
+  document.getElementById('selInvoice').value     = '';
+  document.getElementById('selAging').value       = '';
+  ['Customer','Salesperson'].forEach(f => {
+    document.getElementById(`acDrop${f}`).classList.remove('open');
+    document.getElementById(`acClear${f}`).style.display = 'none';
+  });
+  onAgingChange();
+  currentRecords = [];
+  document.getElementById('summaryStrip').classList.remove('visible');
+  document.getElementById('resultsWrap').classList.remove('visible');
+  document.getElementById('btnDraft').disabled = true;
+  hideDraftPanel();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RENDER RESULTS TABLE
+══════════════════════════════════════════════════════════════════ */
+function ageClass(age) {
+  if (typeof age !== 'number') return 'age-low';
+  if (age > 120) return 'age-critical';
+  if (age > 90)  return 'age-high';
+  if (age > 60)  return 'age-medium';
+  return 'age-low';
+}
+
+function renderResults(records, summary) {
+  const strip = document.getElementById('summaryStrip');
+  const wrap  = document.getElementById('resultsWrap');
+  const area  = document.getElementById('tableArea');
+  const btn   = document.getElementById('btnDraft');
+
+  if (records.length === 0) {
+    strip.classList.remove('visible');
+    wrap.classList.add('visible');
+    area.innerHTML = `<div class="state-msg"><div class="icon">🔍</div><strong>No records found.</strong><br/>Try different filters.</div>`;
+    btn.disabled = true;
+    return;
+  }
+
+  document.getElementById('sumCount').textContent  = summary.count;
+  document.getElementById('sumTotal').textContent  = summary.total;
+  document.getElementById('sumUnused').textContent = summary.unused;
+  document.getElementById('sumNet').textContent    = summary.net;
+  strip.classList.add('visible');
+  document.getElementById('recCount').textContent = records.length;
+
+  let rows = '';
+  records.forEach(r => {
+    const ac = ageClass(r.age);
+    rows += `<tr>
+      <td><span class="inv-chip">${r.invoice_no}</span></td>
+      <td>${r.customer}</td><td>${r.salesperson}</td>
+      <td class="center">${r.inv_date}</td><td class="center">${r.due_date}</td>
+      <td class="center"><span class="${ac}">${r.age}</span></td>
+      <td class="right">${r.balance_fmt}</td>
+    </tr>`;
+  });
+  area.innerHTML = `<table>
+    <thead><tr>
+      <th>Invoice No</th><th>Customer</th><th>Salesperson</th>
+      <th class="center">Invoice Date</th><th class="center">Due Date</th>
+      <th class="center">Overdue Days</th><th class="right">Balance (₹)</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+  wrap.classList.add('visible');
+  btn.disabled = false;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BUILD DRAFT
+══════════════════════════════════════════════════════════════════ */
+async function doDraft() {
+  if (currentRecords.length === 0) return;
+  const btn     = document.getElementById('btnDraft');
+  const label   = document.getElementById('btnDraftLabel');
+  const spinner = document.getElementById('draftSpinner');
+  btn.disabled = true; label.textContent = 'Fetching PDFs from Zoho…'; spinner.style.display = 'block';
+
+  const payload = {
+    customer    : document.getElementById('selCustomer').value,
+    salesperson : document.getElementById('selSalesperson').value,
+    invoice     : document.getElementById('selInvoice').value,
+    aging       : document.getElementById('selAging').value,
+  };
+
+  try {
+    const res  = await fetch('/api/draft_email', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    currentDraftId  = data.draft_id;
+    currentPreviews = data.previews;
+    activeTabIndex  = 0;
+    localEdits      = {};  // reset edits
+
+    // Initialise localEdits from server data
+    currentPreviews.forEach((p, i) => {
+      localEdits[i] = {
+        to         : p.to_email,
+        ccList     : [...p.cc_list],
+        subject    : p.subject,
+        bodyHtml   : p.body_html,
+        removedPdfs: [],
+        extraFiles : [],
+      };
+    });
+
+    isEditMode = false;
+    showDraftPanel();
+
+    // If Zoho is fetching PDFs in background, start polling
+    const anyLoading = data.previews.some(p => p.pdf_loading);
+    if (anyLoading) {
+      showToast('Draft ready! PDFs are being fetched in background…', 'success');
+      pollPdfStatus(data.draft_id);
+    } else {
+      showToast('Draft ready — review or edit before sending.', 'success');
+    }
+  } catch(e) {
+    showToast('Failed to build draft: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; label.textContent = 'Preview Draft'; spinner.style.display = 'none';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PDF STATUS POLLING — polls server until background fetch is done
+══════════════════════════════════════════════════════════════════ */
+async function pollPdfStatus(draft_id) {
+  const maxAttempts = 120;
+  let   attempts    = 0;
+
+  const pdfEl = document.getElementById('pdfList');
+  if (pdfEl) pdfEl.innerHTML = '<span style="color:var(--muted);font-size:12px;">⏳ Fetching PDFs from Zoho Books…</span>';
+
+  const interval = setInterval(async () => {
+    attempts++;
+    if (attempts > maxAttempts || !currentDraftId || currentDraftId !== draft_id) {
+      clearInterval(interval);
+      return;
+    }
+
+    try {
+      const res  = await fetch(`/api/pdf_status/${draft_id}`);
+      const data = await res.json();
+      const pdfListEl = document.getElementById('pdfList');
+
+      if (data.status === 'done') {
+        clearInterval(interval);
+
+        // Use data.tabs which has the FINAL complete list from server
+        if (data.tabs) {
+          data.tabs.forEach((tab, i) => {
+            if (currentPreviews[i]) {
+              currentPreviews[i].invoice_list = tab.invoice_list;
+              currentPreviews[i].missing_note = tab.missing_note;
+              currentPreviews[i].pdf_count    = tab.pdf_count;
+              currentPreviews[i].pdf_loading  = false;
+            }
+          });
+        }
+
+        // Render PDF tags for current tab using final data
+        const p = currentPreviews[activeTabIndex];
+        if (pdfListEl && p) {
+          const invList = p.invoice_list || [];
+          if (invList.length > 0) {
+            pdfListEl.innerHTML = invList.map(inv => {
+              const missing = p.missing_note && p.missing_note.includes(String(inv));
+              return `<span class="pdf-tag ${missing ? 'missing' : ''}">${missing ? '⚠' : '📄'} ${inv}.pdf</span>`;
+            }).join('');
+          } else {
+            pdfListEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs found in Zoho Books</span>`;
+          }
+        }
+
+        const found = data.found || 0;
+        const total = data.total || 0;
+        showToast(`✅ ${found} of ${total} PDFs attached successfully!`, 'success');
+
+      } else if (data.status === 'skipped') {
+        clearInterval(interval);
+        if (pdfListEl) pdfListEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs — Zoho not configured</span>`;
+        showToast('Zoho not configured — no PDFs auto-attached.', '');
+
+      } else if (data.status === 'error') {
+        clearInterval(interval);
+        showToast('PDF fetch failed: ' + (data.message || 'Unknown error'), 'error');
+
+      } else {
+        // Still fetching — show simple progress
+        const done  = data.done  || 0;
+        const total = data.total || '?';
+        const found = data.found || 0;
+        if (pdfListEl) {
+          pdfListEl.innerHTML = done === 0
+            ? `<span style="color:var(--muted);font-size:12px;">⏳ Fetching PDFs from Zoho Books…</span>`
+            : `<span style="color:var(--muted);font-size:12px;">⏳ ${done}/${total} fetched, ${found} ready…</span>`;
+        }
+      }
+    } catch(e) { /* ignore network errors during polling */ }
+  }, 2000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SHOW / RENDER DRAFT PANEL
+══════════════════════════════════════════════════════════════════ */
+function showDraftPanel() {
+  const panel  = document.getElementById('draftPanel');
+  const tabsEl = document.getElementById('draftTabs');
+  panel.classList.add('visible');
+  tabsEl.innerHTML = '';
+  currentPreviews.forEach((p, i) => {
+    const tab = document.createElement('div');
+    tab.className = 'draft-tab' + (i === 0 ? ' active' : '');
+    tab.textContent = p.salesperson;
+    tab.onclick = () => switchTab(i);
+    tabsEl.appendChild(tab);
+  });
+  renderTab(0);
+  panel.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function switchTab(i) {
+  // Save current editable content before switching
+  if (isEditMode) captureEditableContent();
+  activeTabIndex = i;
+  document.querySelectorAll('.draft-tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+  renderTab(i);
+}
+
+function renderTab(i) {
+  const p    = currentPreviews[i];
+  const edit = localEdits[i];
+
+  // ── To ──
+  document.getElementById('metaToView').textContent = edit.to;
+  document.getElementById('metaToInput').value      = edit.to;
+
+  // ── CC (single unified area, JS controls remove button visibility) ──
+  renderCcTags(i, isEditMode);
+
+  // ── Subject ──
+  document.getElementById('metaSubjectView').textContent = edit.subject;
+  document.getElementById('metaSubjectInput').value      = edit.subject;
+
+  // ── PDF list ──
+  const pdfEl   = document.getElementById('pdfList');
+  const invList = p.invoice_list || [];
+  if (invList.length > 0) {
+    pdfEl.innerHTML = invList.map(inv => {
+      const found = !p.missing_note || !p.missing_note.includes(inv);
+      return `<span class="pdf-tag ${found ? '' : 'missing'}">${found ? '📄' : '⚠'} ${inv}.pdf</span>`;
+    }).join('');
+  } else {
+    pdfEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs</span>`;
+  }
+
+  // ── Warning ──
+  const warnEl = document.getElementById('warningRow');
+  if (p.missing_note) {
+    document.getElementById('warningText').textContent = p.missing_note;
+    warnEl.classList.remove('hidden');
+  } else {
+    warnEl.classList.add('hidden');
+  }
+
+  // ── Email body ──
+  const iframe   = document.getElementById('draftIframe');
+  const editable = document.getElementById('draftEditableBody');
+  iframe.srcdoc  = edit.bodyHtml;
+  iframe.onload  = () => {
+    try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 40) + 'px'; } catch(e) {}
+  };
+  editable.innerHTML = edit.bodyHtml;
+
+  // Apply current edit mode display
+  applyEditModeDisplay();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   EDIT MODE TOGGLE
+══════════════════════════════════════════════════════════════════ */
+function toggleEditMode() {
+  if (isEditMode) {
+    // Exit edit mode — save changes first
+    saveEditsToLocal();
+    isEditMode = false;
+    showToast('Changes saved to draft.', 'success');
+  } else {
+    isEditMode = true;
+  }
+  applyEditModeDisplay();
+}
+
+function applyEditModeDisplay() {
+  const btnToggle  = document.getElementById('btnToggleEdit');
+  const btnSave    = document.getElementById('btnSaveEdits');
+  const toolbar    = document.getElementById('bodyToolbar');
+  const iframeWrap = document.getElementById('draftIframeWrap');
+  const editBody   = document.getElementById('draftEditableBody');
+  const subtitle   = document.getElementById('draftSubtitle');
+
+  if (isEditMode) {
+    btnToggle.textContent = '👁 View Mode';
+    btnToggle.classList.add('active');
+    btnSave.style.display = 'inline-flex';
+    toolbar.classList.add('visible');
+    iframeWrap.style.display = 'none';
+    editBody.style.display   = 'block';
+    subtitle.textContent = 'Edit mode — changes are saved per tab';
+
+    // Show editable fields
+    document.getElementById('metaToView').style.display       = 'none';
+    document.getElementById('metaToInput').style.display      = 'block';
+    document.getElementById('metaSubjectView').style.display  = 'none';
+    document.getElementById('metaSubjectInput').style.display = 'block';
+
+    // Re-render CC tags with remove buttons visible + add input shown
+    renderCcTags(activeTabIndex, true);
+
+    editBody.focus();
+  } else {
+    btnToggle.textContent = '✏️ Edit Draft';
+    btnToggle.classList.remove('active');
+    btnSave.style.display = 'none';
+    toolbar.classList.remove('visible');
+    iframeWrap.style.display = 'block';
+    editBody.style.display   = 'none';
+    subtitle.textContent = 'Review carefully before sending';
+
+    // Show read-only fields
+    document.getElementById('metaToView').style.display       = 'block';
+    document.getElementById('metaToInput').style.display      = 'none';
+    document.getElementById('metaSubjectView').style.display  = 'block';
+    document.getElementById('metaSubjectInput').style.display = 'none';
+
+    // Re-render CC tags read-only (no remove buttons, no add input)
+    renderCcTags(activeTabIndex, false);
+
+    const edit   = localEdits[activeTabIndex];
+    const iframe = document.getElementById('draftIframe');
+    iframe.srcdoc = edit.bodyHtml;
+    iframe.onload = () => {
+      try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 40) + 'px'; } catch(e) {}
+    };
+    document.getElementById('metaToView').textContent      = edit.to;
+    document.getElementById('metaSubjectView').textContent = edit.subject;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CC TAG RENDERING — single function handles both view and edit mode
+══════════════════════════════════════════════════════════════════ */
+function renderCcTags(tabIdx, editMode) {
+  const edit   = localEdits[tabIdx];
+  const wrapEl = document.getElementById('ccTagsWrap');
+  const addEl  = document.getElementById('ccAddInput');
+
+  if (edit.ccList.length === 0) {
+    wrapEl.innerHTML = editMode
+      ? ''
+      : '<span style="color:var(--muted);font-size:12px;">No CC recipients</span>';
+  } else {
+    wrapEl.innerHTML = edit.ccList.map((email, idx) => `
+      <span class="cc-tag">
+        ${email}
+        <span class="cc-remove" data-idx="${idx}"
+              style="display:${editMode ? 'inline' : 'none'};"
+              onclick="removeCc(${idx})">✕</span>
+      </span>`).join('');
+  }
+
+  // Show/hide the add-input
+  addEl.style.display = editMode ? 'block' : 'none';
+}
+
+function removeCc(idx) {
+  localEdits[activeTabIndex].ccList.splice(idx, 1);
+  renderCcTags(activeTabIndex, true);
+}
+
+// Add CC on Enter — wired up after DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('ccAddInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (val && val.includes('@')) {
+        localEdits[activeTabIndex].ccList.push(val);
+        renderCcTags(activeTabIndex, true);
+        e.target.value = '';
+      }
+    }
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════════
+   SAVE EDITS
+══════════════════════════════════════════════════════════════════ */
+function captureEditableContent() {
+  // Grab current state of editable fields
+  const edit = localEdits[activeTabIndex];
+  edit.to       = document.getElementById('metaToInput').value.trim();
+  edit.subject  = document.getElementById('metaSubjectInput').value.trim();
+  edit.bodyHtml = document.getElementById('draftEditableBody').innerHTML;
+  // ccList is already updated live via removeCc / ccAddInput
+}
+
+function saveEditsToLocal() {
+  captureEditableContent();
+}
+
+async function saveEdits() {
+  // Save current edits to local state then push to server
+  saveEditsToLocal();
+  const edit = localEdits[activeTabIndex];
+
+  try {
+    const res = await fetch('/api/update_draft', {
+      method : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body   : JSON.stringify({
+        draft_id  : currentDraftId,
+        tab_index : activeTabIndex,
+        to_email  : edit.to,
+        cc_list   : edit.ccList,
+        subject   : edit.subject,
+        body_html : edit.bodyHtml,
+      }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Also update preview object so tabs stay in sync
+    currentPreviews[activeTabIndex].to_email  = edit.to;
+    currentPreviews[activeTabIndex].cc_list   = edit.ccList;
+    currentPreviews[activeTabIndex].subject   = edit.subject;
+    currentPreviews[activeTabIndex].body_html = edit.bodyHtml;
+
+    showToast('Draft updated successfully.', 'success');
+    // Exit edit mode
+    isEditMode = false;
+    applyEditModeDisplay();
+  } catch(e) {
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   RICH TEXT TOOLBAR
+══════════════════════════════════════════════════════════════════ */
+function execFmt(cmd) {
+  document.getElementById('draftEditableBody').focus();
+  document.execCommand(cmd, false, null);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   HIDE / CANCEL DRAFT
+══════════════════════════════════════════════════════════════════ */
+function hideDraftPanel() {
+  document.getElementById('draftPanel').classList.remove('visible');
+  currentDraftId = null; currentPreviews = []; localEdits = {};
+  isEditMode = false;
+}
+function cancelDraft() { hideDraftPanel(); showToast('Draft cancelled.', ''); }
+
+/* ══════════════════════════════════════════════════════════════════
+   CONFIRM & SEND
+══════════════════════════════════════════════════════════════════ */
+async function doConfirmSend() {
+  if (!currentDraftId) return;
+
+  // Warn user if PDFs still loading
+  const pdfListEl = document.getElementById('pdfList');
+  if (pdfListEl && pdfListEl.innerHTML.includes('⏳')) {
+    showToast('⏳ PDFs still being fetched — please wait a moment then try again.', 'error');
+    return;
+  }
+
+  // If still in edit mode, save first
+  if (isEditMode) {
+    saveEditsToLocal();
+    // Push all tabs to server
+    for (let i = 0; i < currentPreviews.length; i++) {
+      const edit = localEdits[i];
+      await fetch('/api/update_draft', {
+        method : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body   : JSON.stringify({
+          draft_id  : currentDraftId, tab_index: i,
+          to_email  : edit.to, cc_list: edit.ccList,
+          subject   : edit.subject, body_html: edit.bodyHtml,
+        }),
+      });
+    }
+  }
+
+  const btn     = document.getElementById('btnConfirmSend');
+  const label   = document.getElementById('btnConfirmLabel');
+  const spinner = document.getElementById('sendSpinner');
+  btn.disabled = true; label.textContent = 'Sending…'; spinner.style.display = 'block';
+
+  try {
+    const res  = await fetch('/api/confirm_send', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ draft_id: currentDraftId }),
+    });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const text = await res.text();
+      console.error('Non-JSON response:', text.substring(0, 300));
+      throw new Error(`Server error (${res.status}). Check Render logs.`);
+    }
+
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Email is being sent in background — poll for result
+    const sendId = data.send_id;
+    if (sendId) {
+      hideDraftPanel();
+      showToast('📤 Sending email… please wait.', '');
+      btn.disabled = false; label.textContent = 'Confirm & Send'; spinner.style.display = 'none';
+
+      // Poll send_status every 3s for up to 90s
+      let polls = 0;
+      const pollSend = setInterval(async () => {
+        polls++;
+        if (polls > 30) { clearInterval(pollSend); showToast('Send timed out — check your inbox.', 'error'); return; }
+        try {
+          const sr   = await fetch(`/api/send_status/${sendId}`);
+          const sdata = await sr.json();
+          if (sdata.status === 'done') {
+            clearInterval(pollSend);
+            showToast('✅ ' + sdata.message, 'success');
+          } else if (sdata.status === 'error') {
+            clearInterval(pollSend);
+            showToast('❌ Send failed: ' + sdata.message, 'error');
+          }
+        } catch(e) { /* ignore */ }
+      }, 3000);
+      return; // exit early — cleanup done above
+    }
+
+    // Fallback if no send_id
+    hideDraftPanel();
+    showToast(data.message || 'Email sent!', 'success');
+  } catch(e) {
+    showToast('Failed to send: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false; label.textContent = 'Confirm & Send'; spinner.style.display = 'none';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   TOAST
+══════════════════════════════════════════════════════════════════ */
+function showToast(msg, type = '') {
+  const t     = document.getElementById('toast');
+  const icon  = document.getElementById('toastIcon');
+  const msgEl = document.getElementById('toastMsg');
+  icon.textContent  = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  msgEl.textContent = msg;
+  t.className = 'toast ' + type;
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => t.classList.remove('show'), 5500);
+}
+</script>
+</body>
+</html>
