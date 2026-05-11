@@ -258,7 +258,7 @@
   .age-low      { color:var(--navy); font-weight:500; }
 
   /* ══════════════════════════════════════════════════════════════════
-     DRAFT PANEL — full redesign with edit mode
+     DRAFT PANEL
   ══════════════════════════════════════════════════════════════════ */
   .draft-panel {
     display:none; background:var(--card);
@@ -267,7 +267,6 @@
   }
   .draft-panel.visible { display:block; }
 
-  /* Header */
   .draft-header {
     background:linear-gradient(135deg,#b45309,#d97706);
     color:#fff; padding:16px 24px;
@@ -280,13 +279,12 @@
   .draft-header-right { display:flex; align-items:center; gap:10px; }
   .draft-step-badge { background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.25); color:#fff; font-size:11px; font-weight:600; padding:4px 13px; border-radius:20px; }
 
-  /* Tabs */
   .draft-tabs { display:flex; border-bottom:1px solid var(--border); background:#fef9f0; overflow-x:auto; }
   .draft-tab { padding:11px 20px; font-size:13px; font-weight:500; cursor:pointer; border-bottom:3px solid transparent; color:var(--muted); transition:all .15s; white-space:nowrap; flex-shrink:0; }
   .draft-tab.active { border-bottom-color:#d97706; color:#b45309; font-weight:700; background:rgba(180,83,9,.04); }
   .draft-tab:hover:not(.active) { color:var(--text); background:rgba(0,0,0,.02); }
 
-  /* ── META SECTION (To/CC/Subject/PDFs) ── */
+  /* ── META SECTION ── */
   .draft-meta {
     padding: 20px 24px;
     border-bottom: 1px solid var(--border);
@@ -302,7 +300,6 @@
     line-height: 1.5; word-break: break-all;
   }
 
-  /* Editable inputs inside meta */
   .meta-input {
     width: 100%; padding: 7px 11px;
     border: 1.5px solid var(--border); border-radius: 8px;
@@ -313,7 +310,6 @@
   .meta-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(58,111,216,.1); }
   .meta-input:disabled { background: #f8fafd; color: var(--muted); cursor: default; border-color: transparent; padding-left: 0; }
 
-  /* CC tags container */
   .cc-tags-wrap {
     display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
     min-height: 36px; padding: 4px 0;
@@ -325,7 +321,6 @@
     padding: 4px 10px; border-radius: 20px;
     border: 1px solid #c8d8ee;
   }
-  /* visibility of remove button is set directly via JS */
   .cc-tag .cc-remove {
     cursor: pointer; color: var(--muted);
     font-size: 15px; font-weight: 700; line-height: 1;
@@ -340,7 +335,6 @@
   .cc-add-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(58,111,216,.1); }
   .cc-add-input::placeholder { color: var(--muted); }
 
-  /* PDF list */
   .pdf-list { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px 0; }
   .pdf-tag {
     display: inline-flex; align-items: center; gap: 5px;
@@ -349,15 +343,8 @@
     padding: 3px 10px; border-radius: 20px;
     border: 1px solid #bbf7d0; font-family: 'JetBrains Mono', monospace;
   }
-  .pdf-tag.missing {
-    background: #fef9c3; color: #92400e; border-color: #fde68a;
-  }
-  .pdf-count-badge {
-    font-size: 12px; font-weight: 600; color: var(--green);
-    font-family: 'JetBrains Mono', monospace;
-  }
+  .pdf-tag.missing { background: #fef9c3; color: #92400e; border-color: #fde68a; }
 
-  /* Warning row */
   .warning-row {
     margin-top: 10px; padding: 8px 12px; border-radius: 8px;
     background: #fef9c3; border: 1px solid #fde68a;
@@ -366,10 +353,9 @@
   .warning-row.hidden { display: none; }
 
   /* ── EMAIL BODY AREA ── */
-  .draft-body-area {
-    border-top: 1px solid var(--border);
-    background: #fff;
-  }
+  .draft-body-area { border-top: 1px solid var(--border); background: #fff; }
+
+  /* ── TOOLBAR — now includes font size ── */
   .draft-body-toolbar {
     display: none;
     padding: 10px 24px;
@@ -387,11 +373,24 @@
   .toolbar-btn:hover { background: #eef2f8; border-color: var(--accent); }
   .toolbar-sep { width: 1px; height: 20px; background: var(--border); margin: 0 2px; }
 
-  /* iframe preview */
+  /* Font size selector */
+  .toolbar-fontsize-wrap {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .toolbar-fontsize-label {
+    font-size: 11px; color: var(--muted); font-weight: 600; white-space: nowrap;
+  }
+  .toolbar-fontsize-select {
+    padding: 4px 8px; border: 1.5px solid var(--border); border-radius: 6px;
+    font-family: 'Inter', sans-serif; font-size: 12px; color: var(--text);
+    background: #fff; cursor: pointer; outline: none;
+    transition: border-color .15s;
+  }
+  .toolbar-fontsize-select:focus { border-color: var(--accent); }
+
   .draft-iframe-wrap { display: block; }
   .draft-iframe-wrap iframe { width:100%; border:none; min-height:500px; background:#fff; display:block; }
 
-  /* contenteditable body */
   .draft-editable-body {
     display: none;
     min-height: 500px;
@@ -570,11 +569,10 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════
-       DRAFT PREVIEW PANEL (with edit mode)
+       DRAFT PREVIEW PANEL
   ══════════════════════════════════════════════════════ -->
   <div class="draft-panel" id="draftPanel">
 
-    <!-- Header -->
     <div class="draft-header">
       <div class="draft-header-left">
         <div class="draft-header-icon">📧</div>
@@ -591,10 +589,8 @@
       </div>
     </div>
 
-    <!-- Tabs (one per salesperson) -->
     <div class="draft-tabs" id="draftTabs"></div>
 
-    <!-- Meta: To / CC / Subject / PDFs — editable when in edit mode -->
     <div class="draft-meta" id="draftMeta">
       <div class="meta-grid">
 
@@ -606,7 +602,6 @@
 
         <span class="meta-label">CC</span>
         <div>
-          <!-- Single CC area — JS shows/hides remove buttons and add input -->
           <div class="cc-tags-wrap" id="ccTagsWrap"></div>
           <input class="cc-add-input" id="ccAddInput" type="email"
                  placeholder="+ Add CC email, press Enter" style="display:none; margin-top:6px;"/>
@@ -629,34 +624,53 @@
       </div>
     </div>
 
-    <!-- Email body -->
     <div class="draft-body-area">
-      <!-- Formatting toolbar (only shown in edit mode) -->
+      <!-- Formatting toolbar with font size -->
       <div class="draft-body-toolbar" id="bodyToolbar">
         <span style="font-size:11px;color:var(--muted);font-weight:600;margin-right:4px;">FORMAT:</span>
+
         <button class="toolbar-btn" onclick="execFmt('bold')"><b>B</b></button>
         <button class="toolbar-btn" onclick="execFmt('italic')"><i>I</i></button>
         <button class="toolbar-btn" onclick="execFmt('underline')"><u>U</u></button>
+
         <div class="toolbar-sep"></div>
+
+        <!-- ── FONT SIZE ── -->
+        <div class="toolbar-fontsize-wrap">
+          <span class="toolbar-fontsize-label">Size:</span>
+          <select class="toolbar-fontsize-select" id="fontSizeSelect" onchange="applyFontSize(this.value)">
+            <option value="">Default</option>
+            <option value="1">8pt</option>
+            <option value="2">10pt</option>
+            <option value="3">12pt (Normal)</option>
+            <option value="4">14pt</option>
+            <option value="5">18pt</option>
+            <option value="6">24pt</option>
+            <option value="7">36pt</option>
+          </select>
+        </div>
+
+        <div class="toolbar-sep"></div>
+
         <button class="toolbar-btn" onclick="execFmt('insertUnorderedList')">• List</button>
         <button class="toolbar-btn" onclick="execFmt('insertOrderedList')">1. List</button>
+
         <div class="toolbar-sep"></div>
+
         <button class="toolbar-btn" onclick="execFmt('removeFormat')">Clear Format</button>
+
         <div style="margin-left:auto;font-size:11px;color:var(--muted);">
-          ⚠ Note: Only edit the greeting/closing text. Invoice tables are auto-generated.
+          ⚠ Edit greeting/closing text only. Invoice tables are auto-generated.
         </div>
       </div>
 
-      <!-- Read-only iframe (shown when NOT in edit mode) -->
       <div class="draft-iframe-wrap" id="draftIframeWrap">
         <iframe id="draftIframe" sandbox="allow-same-origin"></iframe>
       </div>
 
-      <!-- Contenteditable div (shown when IN edit mode) -->
       <div class="draft-editable-body" id="draftEditableBody" contenteditable="true"></div>
     </div>
 
-    <!-- Actions -->
     <div class="draft-actions">
       <button class="btn btn-cancel" onclick="cancelDraft()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -696,12 +710,10 @@
 ══════════════════════════════════════════════════════════════════ */
 let currentRecords  = [];
 let currentDraftId  = null;
-let currentPreviews = [];   // array of preview objects from server
+let currentPreviews = [];
 let activeTabIndex  = 0;
 let isEditMode      = false;
-
-// Local edits per tab: { tabIndex -> { to, ccList, subject, bodyHtml } }
-let localEdits = {};
+let localEdits      = {};
 
 /* ══════════════════════════════════════════════════════════════════
    INIT
@@ -725,14 +737,26 @@ window.addEventListener('DOMContentLoaded', async () => {
     status.textContent = 'Error loading data';
     showToast('Could not load data: ' + e.message, 'error');
   }
+
+  // CC add-input Enter handler
+  document.getElementById('ccAddInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (val && val.includes('@')) {
+        localEdits[activeTabIndex].ccList.push(val);
+        renderCcTags(activeTabIndex, true);
+        e.target.value = '';
+      }
+    }
+  });
 });
 
-// ── Autocomplete data store ──
+/* ── Autocomplete ── */
 const acData = { Customer: [], Salesperson: [] };
 let   acActiveIdx = { Customer: -1, Salesperson: -1 };
 
 function populate(id, items) {
-  // For invoice — keep as hidden select for compatibility
   if (id === 'selInvoice') {
     const sel = document.getElementById(id);
     items.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
@@ -751,11 +775,9 @@ function renderAcDropdown(field, items, query='') {
   if (!filtered.length) {
     drop.innerHTML = `<div class="ac-item" style="color:var(--muted);">No results found</div>`;
   } else {
-    drop.innerHTML = filtered.slice(0, 80).map((item, idx) => {
+    drop.innerHTML = filtered.slice(0, 80).map((item) => {
       const hl = q ? item.replace(new RegExp(`(${q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')})`, 'gi'), '<mark>$1</mark>') : item;
-      return `<div class="ac-item" data-val="${item}" data-idx="${idx}" onmousedown="acSelect('${field}','${item.replace(/'/g,"\'")}')">
-        ${hl}
-      </div>`;
+      return `<div class="ac-item" data-val="${item}" onmousedown="acSelect('${field}','${item.replace(/'/g,"\\'")}')">${hl}</div>`;
     }).join('');
   }
   acActiveIdx[field] = -1;
@@ -763,10 +785,9 @@ function renderAcDropdown(field, items, query='') {
 
 function acFilter(field) {
   const inp   = document.getElementById(`sel${field}`);
-  const query = inp.value;
-  renderAcDropdown(field, acData[field], query);
+  renderAcDropdown(field, acData[field], inp.value);
   document.getElementById(`acDrop${field}`).classList.add('open');
-  document.getElementById(`acClear${field}`).style.display = query ? 'block' : 'none';
+  document.getElementById(`acClear${field}`).style.display = inp.value ? 'block' : 'none';
 }
 
 function acOpen(field) {
@@ -792,34 +813,21 @@ function acKey(e, field) {
   const drop  = document.getElementById(`acDrop${field}`);
   const items = drop.querySelectorAll('.ac-item[data-val]');
   if (!items.length) return;
-  if (e.key === 'ArrowDown') {
-    e.preventDefault();
-    acActiveIdx[field] = Math.min(acActiveIdx[field] + 1, items.length - 1);
-  } else if (e.key === 'ArrowUp') {
-    e.preventDefault();
-    acActiveIdx[field] = Math.max(acActiveIdx[field] - 1, 0);
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    const active = drop.querySelector('.ac-item.active');
-    if (active) acSelect(field, active.dataset.val);
-    else drop.classList.remove('open');
-    return;
-  } else if (e.key === 'Escape') {
-    drop.classList.remove('open'); return;
-  }
+  if (e.key === 'ArrowDown') { e.preventDefault(); acActiveIdx[field] = Math.min(acActiveIdx[field] + 1, items.length - 1); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); acActiveIdx[field] = Math.max(acActiveIdx[field] - 1, 0); }
+  else if (e.key === 'Enter') { e.preventDefault(); const a = drop.querySelector('.ac-item.active'); if (a) acSelect(field, a.dataset.val); else drop.classList.remove('open'); return; }
+  else if (e.key === 'Escape') { drop.classList.remove('open'); return; }
   items.forEach((el, i) => el.classList.toggle('active', i === acActiveIdx[field]));
   if (acActiveIdx[field] >= 0) items[acActiveIdx[field]].scrollIntoView({ block:'nearest' });
 }
 
-// Close dropdowns on outside click
 document.addEventListener('click', e => {
   ['Customer','Salesperson'].forEach(field => {
     const wrap = document.getElementById(`acWrap${field}`);
-    if (wrap && !wrap.contains(e.target)) {
-      document.getElementById(`acDrop${field}`).classList.remove('open');
-    }
+    if (wrap && !wrap.contains(e.target)) document.getElementById(`acDrop${field}`).classList.remove('open');
   });
 });
+
 function populateAging(buckets) {
   const sel = document.getElementById('selAging');
   buckets.forEach(b => { const o = document.createElement('option'); o.value = b; o.textContent = b; sel.appendChild(o); });
@@ -882,7 +890,7 @@ function clearSearch() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   RENDER RESULTS TABLE
+   RENDER RESULTS
 ══════════════════════════════════════════════════════════════════ */
 function ageClass(age) {
   if (typeof age !== 'number') return 'age-low';
@@ -961,24 +969,20 @@ async function doDraft() {
     currentDraftId  = data.draft_id;
     currentPreviews = data.previews;
     activeTabIndex  = 0;
-    localEdits      = {};  // reset edits
+    localEdits      = {};
 
-    // Initialise localEdits from server data
     currentPreviews.forEach((p, i) => {
       localEdits[i] = {
         to         : p.to_email,
         ccList     : [...p.cc_list],
         subject    : p.subject,
         bodyHtml   : p.body_html,
-        removedPdfs: [],
-        extraFiles : [],
       };
     });
 
     isEditMode = false;
     showDraftPanel();
 
-    // If Zoho is fetching PDFs in background, start polling
     const anyLoading = data.previews.some(p => p.pdf_loading);
     if (anyLoading) {
       showToast('Draft ready! PDFs are being fetched in background…', 'success');
@@ -994,7 +998,7 @@ async function doDraft() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   PDF STATUS POLLING — polls server until background fetch is done
+   PDF STATUS POLLING
 ══════════════════════════════════════════════════════════════════ */
 async function pollPdfStatus(draft_id) {
   const maxAttempts = 120;
@@ -1005,10 +1009,7 @@ async function pollPdfStatus(draft_id) {
 
   const interval = setInterval(async () => {
     attempts++;
-    if (attempts > maxAttempts || !currentDraftId || currentDraftId !== draft_id) {
-      clearInterval(interval);
-      return;
-    }
+    if (attempts > maxAttempts || !currentDraftId || currentDraftId !== draft_id) { clearInterval(interval); return; }
 
     try {
       const res  = await fetch(`/api/pdf_status/${draft_id}`);
@@ -1017,48 +1018,39 @@ async function pollPdfStatus(draft_id) {
 
       if (data.status === 'done') {
         clearInterval(interval);
-
-        // Use data.tabs which has the FINAL complete list from server
         if (data.tabs) {
           data.tabs.forEach((tab, i) => {
             if (currentPreviews[i]) {
               currentPreviews[i].invoice_list = tab.invoice_list;
               currentPreviews[i].missing_note = tab.missing_note;
+              currentPreviews[i].missing_pdfs = tab.missing_pdfs || [];
               currentPreviews[i].pdf_count    = tab.pdf_count;
               currentPreviews[i].pdf_loading  = false;
             }
           });
         }
-
-        // Render PDF tags for current tab using final data
         const p = currentPreviews[activeTabIndex];
         if (pdfListEl && p) {
-          const invList = p.invoice_list || [];
-          if (invList.length > 0) {
-            pdfListEl.innerHTML = invList.map(inv => {
-              const missing = p.missing_note && p.missing_note.includes(String(inv));
-              return `<span class="pdf-tag ${missing ? 'missing' : ''}">${missing ? '⚠' : '📄'} ${inv}.pdf</span>`;
-            }).join('');
-          } else {
-            pdfListEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs found in Zoho Books</span>`;
-          }
+          const invList    = p.invoice_list || [];
+          const missingSet = new Set((p.missing_pdfs || []).map(String));
+          pdfListEl.innerHTML = invList.length > 0
+            ? invList.map(inv => {
+                const missing = missingSet.has(String(inv));
+                return `<span class="pdf-tag ${missing ? 'missing' : ''}">${missing ? '⚠' : '📄'} ${inv}.pdf</span>`;
+              }).join('')
+            : `<span style="color:var(--muted);font-size:12px;">No PDFs found in Zoho Books</span>`;
         }
-
-        const found = data.found || 0;
-        const total = data.total || 0;
-        showToast(`✅ ${found} of ${total} PDFs attached successfully!`, 'success');
+        showToast(`✅ ${data.found || 0} of ${data.total || 0} PDFs attached!`, 'success');
 
       } else if (data.status === 'skipped') {
         clearInterval(interval);
         if (pdfListEl) pdfListEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs — Zoho not configured</span>`;
-        showToast('Zoho not configured — no PDFs auto-attached.', '');
 
       } else if (data.status === 'error') {
         clearInterval(interval);
         showToast('PDF fetch failed: ' + (data.message || 'Unknown error'), 'error');
 
       } else {
-        // Still fetching — show simple progress
         const done  = data.done  || 0;
         const total = data.total || '?';
         const found = data.found || 0;
@@ -1068,7 +1060,7 @@ async function pollPdfStatus(draft_id) {
             : `<span style="color:var(--muted);font-size:12px;">⏳ ${done}/${total} fetched, ${found} ready…</span>`;
         }
       }
-    } catch(e) { /* ignore network errors during polling */ }
+    } catch(e) { /* ignore */ }
   }, 2000);
 }
 
@@ -1092,7 +1084,6 @@ function showDraftPanel() {
 }
 
 function switchTab(i) {
-  // Save current editable content before switching
   if (isEditMode) captureEditableContent();
   activeTabIndex = i;
   document.querySelectorAll('.draft-tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
@@ -1103,30 +1094,25 @@ function renderTab(i) {
   const p    = currentPreviews[i];
   const edit = localEdits[i];
 
-  // ── To ──
-  document.getElementById('metaToView').textContent = edit.to;
-  document.getElementById('metaToInput').value      = edit.to;
+  document.getElementById('metaToView').textContent     = edit.to;
+  document.getElementById('metaToInput').value          = edit.to;
+  document.getElementById('metaSubjectView').textContent = edit.subject;
+  document.getElementById('metaSubjectInput').value     = edit.subject;
 
-  // ── CC (single unified area, JS controls remove button visibility) ──
   renderCcTags(i, isEditMode);
 
-  // ── Subject ──
-  document.getElementById('metaSubjectView').textContent = edit.subject;
-  document.getElementById('metaSubjectInput').value      = edit.subject;
-
-  // ── PDF list ──
-  const pdfEl   = document.getElementById('pdfList');
-  const invList = p.invoice_list || [];
+  const pdfEl      = document.getElementById('pdfList');
+  const invList    = p.invoice_list || [];
+  const missingSet = new Set((p.missing_pdfs || []).map(String));
   if (invList.length > 0) {
     pdfEl.innerHTML = invList.map(inv => {
-      const found = !p.missing_note || !p.missing_note.includes(inv);
-      return `<span class="pdf-tag ${found ? '' : 'missing'}">${found ? '📄' : '⚠'} ${inv}.pdf</span>`;
+      const missing = missingSet.has(String(inv));
+      return `<span class="pdf-tag ${missing ? 'missing' : ''}">${missing ? '⚠' : '📄'} ${inv}.pdf</span>`;
     }).join('');
   } else {
     pdfEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs</span>`;
   }
 
-  // ── Warning ──
   const warnEl = document.getElementById('warningRow');
   if (p.missing_note) {
     document.getElementById('warningText').textContent = p.missing_note;
@@ -1135,7 +1121,6 @@ function renderTab(i) {
     warnEl.classList.add('hidden');
   }
 
-  // ── Email body ──
   const iframe   = document.getElementById('draftIframe');
   const editable = document.getElementById('draftEditableBody');
   iframe.srcdoc  = edit.bodyHtml;
@@ -1144,16 +1129,14 @@ function renderTab(i) {
   };
   editable.innerHTML = edit.bodyHtml;
 
-  // Apply current edit mode display
   applyEditModeDisplay();
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   EDIT MODE TOGGLE
+   EDIT MODE
 ══════════════════════════════════════════════════════════════════ */
 function toggleEditMode() {
   if (isEditMode) {
-    // Exit edit mode — save changes first
     saveEditsToLocal();
     isEditMode = false;
     showToast('Changes saved to draft.', 'success');
@@ -1180,15 +1163,12 @@ function applyEditModeDisplay() {
     editBody.style.display   = 'block';
     subtitle.textContent = 'Edit mode — changes are saved per tab';
 
-    // Show editable fields
     document.getElementById('metaToView').style.display       = 'none';
     document.getElementById('metaToInput').style.display      = 'block';
     document.getElementById('metaSubjectView').style.display  = 'none';
     document.getElementById('metaSubjectInput').style.display = 'block';
 
-    // Re-render CC tags with remove buttons visible + add input shown
     renderCcTags(activeTabIndex, true);
-
     editBody.focus();
   } else {
     btnToggle.textContent = '✏️ Edit Draft';
@@ -1199,13 +1179,11 @@ function applyEditModeDisplay() {
     editBody.style.display   = 'none';
     subtitle.textContent = 'Review carefully before sending';
 
-    // Show read-only fields
     document.getElementById('metaToView').style.display       = 'block';
     document.getElementById('metaToInput').style.display      = 'none';
     document.getElementById('metaSubjectView').style.display  = 'block';
     document.getElementById('metaSubjectInput').style.display = 'none';
 
-    // Re-render CC tags read-only (no remove buttons, no add input)
     renderCcTags(activeTabIndex, false);
 
     const edit   = localEdits[activeTabIndex];
@@ -1214,13 +1192,13 @@ function applyEditModeDisplay() {
     iframe.onload = () => {
       try { iframe.style.height = (iframe.contentDocument.body.scrollHeight + 40) + 'px'; } catch(e) {}
     };
-    document.getElementById('metaToView').textContent      = edit.to;
-    document.getElementById('metaSubjectView').textContent = edit.subject;
+    document.getElementById('metaToView').textContent       = edit.to;
+    document.getElementById('metaSubjectView').textContent  = edit.subject;
   }
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   CC TAG RENDERING — single function handles both view and edit mode
+   CC TAGS
 ══════════════════════════════════════════════════════════════════ */
 function renderCcTags(tabIdx, editMode) {
   const edit   = localEdits[tabIdx];
@@ -1228,9 +1206,7 @@ function renderCcTags(tabIdx, editMode) {
   const addEl  = document.getElementById('ccAddInput');
 
   if (edit.ccList.length === 0) {
-    wrapEl.innerHTML = editMode
-      ? ''
-      : '<span style="color:var(--muted);font-size:12px;">No CC recipients</span>';
+    wrapEl.innerHTML = editMode ? '' : '<span style="color:var(--muted);font-size:12px;">No CC recipients</span>';
   } else {
     wrapEl.innerHTML = edit.ccList.map((email, idx) => `
       <span class="cc-tag">
@@ -1240,8 +1216,6 @@ function renderCcTags(tabIdx, editMode) {
               onclick="removeCc(${idx})">✕</span>
       </span>`).join('');
   }
-
-  // Show/hide the add-input
   addEl.style.display = editMode ? 'block' : 'none';
 }
 
@@ -1250,42 +1224,34 @@ function removeCc(idx) {
   renderCcTags(activeTabIndex, true);
 }
 
-// Add CC on Enter — wired up after DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  document.getElementById('ccAddInput').addEventListener('keydown', e => {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const val = e.target.value.trim();
-      if (val && val.includes('@')) {
-        localEdits[activeTabIndex].ccList.push(val);
-        renderCcTags(activeTabIndex, true);
-        e.target.value = '';
-      }
-    }
-  });
-});
+/* ══════════════════════════════════════════════════════════════════
+   FONT SIZE
+══════════════════════════════════════════════════════════════════ */
+function applyFontSize(size) {
+  const editBody = document.getElementById('draftEditableBody');
+  editBody.focus();
+  if (size) {
+    document.execCommand('fontSize', false, size);
+  }
+  // Reset dropdown after applying
+  setTimeout(() => { document.getElementById('fontSizeSelect').value = ''; }, 200);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    SAVE EDITS
 ══════════════════════════════════════════════════════════════════ */
 function captureEditableContent() {
-  // Grab current state of editable fields
-  const edit = localEdits[activeTabIndex];
+  const edit    = localEdits[activeTabIndex];
   edit.to       = document.getElementById('metaToInput').value.trim();
   edit.subject  = document.getElementById('metaSubjectInput').value.trim();
   edit.bodyHtml = document.getElementById('draftEditableBody').innerHTML;
-  // ccList is already updated live via removeCc / ccAddInput
 }
 
-function saveEditsToLocal() {
-  captureEditableContent();
-}
+function saveEditsToLocal() { captureEditableContent(); }
 
 async function saveEdits() {
-  // Save current edits to local state then push to server
   saveEditsToLocal();
   const edit = localEdits[activeTabIndex];
-
   try {
     const res = await fetch('/api/update_draft', {
       method : 'POST',
@@ -1302,14 +1268,12 @@ async function saveEdits() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Also update preview object so tabs stay in sync
     currentPreviews[activeTabIndex].to_email  = edit.to;
     currentPreviews[activeTabIndex].cc_list   = edit.ccList;
     currentPreviews[activeTabIndex].subject   = edit.subject;
     currentPreviews[activeTabIndex].body_html = edit.bodyHtml;
 
     showToast('Draft updated successfully.', 'success');
-    // Exit edit mode
     isEditMode = false;
     applyEditModeDisplay();
   } catch(e) {
@@ -1318,7 +1282,7 @@ async function saveEdits() {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   RICH TEXT TOOLBAR
+   RICH TEXT
 ══════════════════════════════════════════════════════════════════ */
 function execFmt(cmd) {
   document.getElementById('draftEditableBody').focus();
@@ -1326,7 +1290,7 @@ function execFmt(cmd) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   HIDE / CANCEL DRAFT
+   HIDE / CANCEL
 ══════════════════════════════════════════════════════════════════ */
 function hideDraftPanel() {
   document.getElementById('draftPanel').classList.remove('visible');
@@ -1341,17 +1305,14 @@ function cancelDraft() { hideDraftPanel(); showToast('Draft cancelled.', ''); }
 async function doConfirmSend() {
   if (!currentDraftId) return;
 
-  // Warn user if PDFs still loading
   const pdfListEl = document.getElementById('pdfList');
   if (pdfListEl && pdfListEl.innerHTML.includes('⏳')) {
     showToast('⏳ PDFs still being fetched — please wait a moment then try again.', 'error');
     return;
   }
 
-  // If still in edit mode, save first
   if (isEditMode) {
     saveEditsToLocal();
-    // Push all tabs to server
     for (let i = 0; i < currentPreviews.length; i++) {
       const edit = localEdits[i];
       await fetch('/api/update_draft', {
@@ -1387,34 +1348,26 @@ async function doConfirmSend() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Email is being sent in background — poll for result
     const sendId = data.send_id;
     if (sendId) {
       hideDraftPanel();
       showToast('📤 Sending email… please wait.', '');
       btn.disabled = false; label.textContent = 'Confirm & Send'; spinner.style.display = 'none';
 
-      // Poll send_status every 3s for up to 90s
       let polls = 0;
       const pollSend = setInterval(async () => {
         polls++;
         if (polls > 30) { clearInterval(pollSend); showToast('Send timed out — check your inbox.', 'error'); return; }
         try {
-          const sr   = await fetch(`/api/send_status/${sendId}`);
+          const sr    = await fetch(`/api/send_status/${sendId}`);
           const sdata = await sr.json();
-          if (sdata.status === 'done') {
-            clearInterval(pollSend);
-            showToast('✅ ' + sdata.message, 'success');
-          } else if (sdata.status === 'error') {
-            clearInterval(pollSend);
-            showToast('❌ Send failed: ' + sdata.message, 'error');
-          }
+          if (sdata.status === 'done') { clearInterval(pollSend); showToast('✅ ' + sdata.message, 'success'); }
+          else if (sdata.status === 'error') { clearInterval(pollSend); showToast('❌ Send failed: ' + sdata.message, 'error'); }
         } catch(e) { /* ignore */ }
       }, 3000);
-      return; // exit early — cleanup done above
+      return;
     }
 
-    // Fallback if no send_id
     hideDraftPanel();
     showToast(data.message || 'Email sent!', 'success');
   } catch(e) {

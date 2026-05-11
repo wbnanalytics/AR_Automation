@@ -1,15 +1,11 @@
 import os
 import io
-import smtplib
 import secrets
 import tempfile
 import requests
 import threading
 import time
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
+import base64
 from pathlib import Path
 
 import pandas as pd
@@ -27,14 +23,15 @@ GDRIVE_EXCEL_FILE_ID = os.getenv("GDRIVE_EXCEL_FILE_ID", "")
 USE_GDRIVE           = True
 DATA_FILE            = "M_data.xlsx"
 
-SMTP_EMAIL    = os.getenv("SMTP_EMAIL", "")
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
-SMTP_HOST     = "smtp.gmail.com"
-SMTP_PORT     = 587
+# ── SendGrid ──────────────────────────────────────────────────────────────────
+SENDGRID_API_KEY  = os.getenv("SENDGRID_API_KEY", "")
+SENDER_EMAIL      = os.getenv("SMTP_EMAIL", "")
+SENDER_NAME       = os.getenv("SENDER_NAME", "Wellbeing Nutrition AR")
 
 _cc_raw        = os.getenv("CC_EMAILS", "")
 CC_EMAILS_LIST = [e.strip() for e in _cc_raw.split(",") if e.strip()]
 
+# ── Zoho ──────────────────────────────────────────────────────────────────────
 ZOHO_CLIENT_ID       = os.getenv("ZOHO_CLIENT_ID", "")
 ZOHO_CLIENT_SECRET   = os.getenv("ZOHO_CLIENT_SECRET", "")
 ZOHO_REFRESH_TOKEN   = os.getenv("ZOHO_REFRESH_TOKEN", "")
@@ -43,6 +40,8 @@ ZOHO_REGION          = os.getenv("ZOHO_REGION", "in")
 
 ZOHO_ACCOUNTS_URL = f"https://accounts.zoho.{ZOHO_REGION}/oauth/v2/token"
 ZOHO_API_BASE     = f"https://www.zohoapis.{ZOHO_REGION}/books/v3"
+
+SENDGRID_API_URL  = "https://api.sendgrid.com/v3/mail/send"
 
 REQUIRED_COLUMNS = {
     "Age", "Balance_Due", "Customer_Name", "Due_Date",
@@ -68,8 +67,9 @@ AGING_BUCKETS = {
 app = Flask(__name__)
 app.secret_key = secrets.token_hex(16)
 
-drafts = {}       # in-memory draft store: { draft_id -> list of draft_entry dicts }
-pdf_status = {}   # tracks background PDF fetch status per draft_id
+drafts       = {}
+pdf_status   = {}
+send_results = {}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -91,7 +91,6 @@ class ZohoTokenManager:
     def _refresh(self):
         if not all([ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, ZOHO_REFRESH_TOKEN]):
             raise RuntimeError("Zoho credentials missing in .env")
-
         resp = requests.post(
             ZOHO_ACCOUNTS_URL,
             data={
@@ -171,25 +170,6 @@ def zoho_download_pdf(invoice_id, save_dir, filename):
         return None
 
 
-def fetch_invoice_pdfs_from_zoho(invoice_numbers, tmp_dir):
-    """Fetch all invoice PDFs sequentially — simple and reliable."""
-    result = {}
-    for inv_no in invoice_numbers:
-        inv_no_str = str(inv_no).strip()
-        if not inv_no_str:
-            continue
-        print(f"[Zoho] Fetching PDF for: {inv_no_str}")
-        invoice_id = zoho_find_invoice_id(inv_no_str)
-        if not invoice_id:
-            result[inv_no_str] = None
-            continue
-        result[inv_no_str] = zoho_download_pdf(invoice_id, tmp_dir, f"{inv_no_str}.pdf")
-    found  = sum(1 for v in result.values() if v)
-    missed = sum(1 for v in result.values() if not v)
-    print(f"[Zoho] Done — {found} downloaded, {missed} not found.")
-    return result
-
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  GOOGLE DRIVE — EXCEL LOADER
 # ══════════════════════════════════════════════════════════════════════════════
@@ -213,8 +193,9 @@ def format_date(value):
 
 
 def format_currency(value):
+    """Format currency with ₹ symbol and Indian number system."""
     if pd.isna(value):
-        return "Rs. 0.00"
+        return "₹ 0.00"
     num              = float(value)
     s                = f"{num:.2f}"
     integer, decimal = s.split(".")
@@ -223,7 +204,22 @@ def format_currency(value):
         rest    = integer[:-3]
         rest    = ",".join([rest[max(i - 2, 0):i] for i in range(len(rest), 0, -2)][::-1])
         integer = rest + "," + last3
-    return f"Rs. {integer}.{decimal}"
+    return f"&#8377; {integer}.{decimal}"
+
+
+def format_currency_plain(value):
+    """Same as format_currency but uses ₹ character (for non-HTML contexts)."""
+    if pd.isna(value):
+        return "₹ 0.00"
+    num              = float(value)
+    s                = f"{num:.2f}"
+    integer, decimal = s.split(".")
+    if len(integer) > 3:
+        last3   = integer[-3:]
+        rest    = integer[:-3]
+        rest    = ",".join([rest[max(i - 2, 0):i] for i in range(len(rest), 0, -2)][::-1])
+        integer = rest + "," + last3
+    return f"₹ {integer}.{decimal}"
 
 
 def get_unused_credit(df):
@@ -242,16 +238,12 @@ def load_data():
         df = load_excel_from_gdrive()
     else:
         df = pd.read_excel(Path(__file__).parent / DATA_FILE)
-    # ── Normalise column names: strip whitespace and replace spaces with underscores
     df.columns = [c.strip().replace(" ", "_") for c in df.columns]
     validate_columns(df)
     for col in DATE_COLUMNS:
         df[col] = pd.to_datetime(df[col], dayfirst=True, errors="coerce")
-    # ── Sanitise Age: replace #VALUE!, #REF!, #N/A and any other Excel errors with NaN
     df["Age"] = pd.to_numeric(df["Age"], errors="coerce")
 
-    # ── Sanitise Balance_Due and Unused_Credits
-    # Strip Rs/₹ symbol, commas, spaces before converting (Excel stores currency as text)
     def clean_numeric(series):
         return (
             series.astype(str)
@@ -276,7 +268,6 @@ def apply_aging_filter(df, aging_label):
 
 
 def safe_age(value):
-    """Convert Age value safely — returns int or empty string."""
     try:
         v = pd.to_numeric(value, errors="coerce")
         return "" if pd.isna(v) else int(v)
@@ -296,7 +287,7 @@ def df_to_records(df):
             "due_date"    : format_date(r["Due_Date"]),
             "age"         : safe_age(r["Age"]),
             "balance"     : float(r["Balance_Due"]) if pd.notna(r["Balance_Due"]) else 0.0,
-            "balance_fmt" : format_currency(r["Balance_Due"]),
+            "balance_fmt" : format_currency_plain(r["Balance_Due"]),
             "unused"      : float(r["Unused_Credits"]) if pd.notna(r["Unused_Credits"]) else 0.0,
         })
     return rows
@@ -370,6 +361,8 @@ def build_email_html(salesperson, salesperson_df):
     total_outstanding = salesperson_df["Balance_Due"].fillna(0).sum()
     total_unused      = get_unused_credit(salesperson_df)
     net_outstanding   = total_outstanding - total_unused
+    # ── NEW: count unique customers for this salesperson ──
+    total_customers   = salesperson_df["Customer_Name"].nunique()
 
     html = f"""<div style='font-family:Calibri,Arial,sans-serif;font-size:11pt;color:#222;max-width:680px;'>
 <p style='margin:0 0 12px 0;'>Hi {first_name},</p>
@@ -389,17 +382,21 @@ The respective invoices are attached for your reference.</p>
         <table width='100%' cellpadding='0' cellspacing='0'
                style='border-collapse:collapse;'>
             <tr>
-                <td style='padding:10px 14px;background-color:#eef2f8;border:1px solid #d9e1ec;width:33%;'>
+                <td style='padding:10px 14px;background-color:#eef2f8;border:1px solid #d9e1ec;width:25%;'>
                     <div style='font-size:8pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;'>Total Outstanding</div>
                     <div style='font-size:11pt;font-weight:bold;color:#a32d2d;margin-top:4px;'>{format_currency(total_outstanding)}</div>
                 </td>
-                <td style='padding:10px 14px;background-color:#e8f5f0;border:1px solid #d9e1ec;width:33%;'>
+                <td style='padding:10px 14px;background-color:#e8f5f0;border:1px solid #d9e1ec;width:25%;'>
                     <div style='font-size:8pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;'>Unused Credit</div>
                     <div style='font-size:11pt;font-weight:bold;color:#0f6e56;margin-top:4px;'>{format_currency(total_unused)}</div>
                 </td>
-                <td style='padding:10px 14px;background-color:#f0f4ff;border:1px solid #d9e1ec;width:33%;'>
+                <td style='padding:10px 14px;background-color:#f0f4ff;border:1px solid #d9e1ec;width:25%;'>
                     <div style='font-size:8pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;'>Net Outstanding</div>
                     <div style='font-size:11pt;font-weight:bold;color:#1a3c6e;margin-top:4px;'>{format_currency(net_outstanding)}</div>
+                </td>
+                <td style='padding:10px 14px;background-color:#fff8f0;border:1px solid #d9e1ec;width:25%;'>
+                    <div style='font-size:8pt;color:#555;text-transform:uppercase;letter-spacing:0.5px;'>Total Customers</div>
+                    <div style='font-size:11pt;font-weight:bold;color:#b45309;margin-top:4px;'>{total_customers}</div>
                 </td>
             </tr>
         </table>
@@ -418,56 +415,61 @@ The respective invoices are attached for your reference.</p>
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  SMTP SENDER
+#  SENDGRID SENDER
 # ══════════════════════════════════════════════════════════════════════════════
 
-def send_via_smtp(to_email, cc_list, subject, body_html, attachment_paths):
-    """Send email — deduplicates CC list to avoid SMTP rejection."""
-    # Deduplicate CC — remove duplicates and any that equal To address
-    seen = set()
+def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
+    if not SENDGRID_API_KEY:
+        raise RuntimeError("SENDGRID_API_KEY is missing in .env")
+    if not SENDER_EMAIL:
+        raise RuntimeError("SMTP_EMAIL (sender address) is missing in .env")
+
+    seen     = {to_email.lower()}
     clean_cc = []
     for e in (cc_list or []):
         e = e.strip()
-        if e and e.lower() != to_email.lower() and e.lower() not in seen:
+        if e and e.lower() not in seen:
             seen.add(e.lower())
             clean_cc.append(e)
 
-    msg            = MIMEMultipart("mixed")
-    msg["From"]    = SMTP_EMAIL
-    msg["To"]      = to_email
+    personalizations = [{"to": [{"email": to_email}]}]
     if clean_cc:
-        msg["CC"]  = ", ".join(clean_cc)
-    from email.header import Header
-    msg["Subject"] = Header(subject, "utf-8")
-    msg.attach(MIMEText(body_html, "html", "utf-8"))
+        personalizations[0]["cc"] = [{"email": e} for e in clean_cc]
 
+    attachments    = []
     attached_count = 0
     for path in (attachment_paths or []):
         if path and os.path.exists(path):
             with open(path, "rb") as f:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(f.read())
-            encoders.encode_base64(part)
-            part.add_header("Content-Disposition", f'attachment; filename="{os.path.basename(path)}"'  )
-            msg.attach(part)
+                encoded = base64.b64encode(f.read()).decode("utf-8")
+            attachments.append({
+                "content"    : encoded,
+                "type"       : "application/pdf",
+                "filename"   : os.path.basename(path),
+                "disposition": "attachment",
+            })
             attached_count += 1
 
-    # Deduplicated recipient list
-    all_recipients = list({to_email.lower(): to_email, **{e.lower(): e for e in clean_cc}}.values())
-    print(f"[SMTP] To={to_email} CC={clean_cc} PDFs={attached_count}")
+    payload = {
+        "personalizations": personalizations,
+        "from"            : {"email": SENDER_EMAIL, "name": SENDER_NAME},
+        "subject"         : subject,
+        "content"         : [{"type": "text/html", "value": body_html}],
+    }
+    if attachments:
+        payload["attachments"] = attachments
 
-    print(f"[SMTP] Connecting to {SMTP_HOST}:{SMTP_PORT} via STARTTLS...")
-    with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=25) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(SMTP_EMAIL, SMTP_PASSWORD)
-        try:
-            raw = msg.as_bytes()
-        except Exception:
-            raw = msg.as_string().encode('utf-8', errors='replace')
-        server.sendmail(SMTP_EMAIL, all_recipients, raw)
-    print(f"[SMTP] Sent successfully to {all_recipients}")
+    headers = {
+        "Authorization": f"Bearer {SENDGRID_API_KEY}",
+        "Content-Type" : "application/json",
+    }
+
+    print(f"[SendGrid] To={to_email} | CC={clean_cc} | PDFs={attached_count}")
+    resp = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=60)
+
+    if resp.status_code not in (200, 202):
+        raise RuntimeError(f"SendGrid returned {resp.status_code}: {resp.text[:400]}")
+    print(f"[SendGrid] Accepted — status {resp.status_code}")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -519,9 +521,9 @@ def search():
         return jsonify({
             "records": df_to_records(filtered),
             "summary": {
-                "total"  : format_currency(total),
-                "unused" : format_currency(unused),
-                "net"    : format_currency(total - unused),
+                "total"  : format_currency_plain(total),
+                "unused" : format_currency_plain(unused),
+                "net"    : format_currency_plain(total - unused),
                 "count"  : len(filtered),
             },
         })
@@ -531,10 +533,6 @@ def search():
 
 @app.route("/api/draft_email", methods=["POST"])
 def draft_email():
-    """
-    Returns draft immediately. PDFs fetched from Zoho in a background thread.
-    Frontend polls /api/pdf_status/<draft_id> to know when PDFs are ready.
-    """
     try:
         body        = request.get_json()
         salesperson = body.get("salesperson", "").strip()
@@ -560,9 +558,8 @@ def draft_email():
         draft_id        = secrets.token_hex(8)
         draft_entries   = []
 
-        # ── Build draft entries immediately (no PDF wait) ───────────────────
         for sp, sp_df in filtered.groupby("Salesperson", dropna=False):
-            to_email = str(sp_df["Salesperson_mail_id"].iloc[0]).strip()
+            to_email  = str(sp_df["Salesperson_mail_id"].iloc[0]).strip()
             body_html = build_email_html(sp, sp_df)
             inv_list  = sp_df["Invoice_no."].dropna().unique().tolist()
             draft_entries.append({
@@ -582,14 +579,13 @@ def draft_email():
         zoho_configured      = all([ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET,
                                     ZOHO_REFRESH_TOKEN, ZOHO_ORGANIZATION_ID])
         pdf_status[draft_id] = {
-            "status"   : "fetching" if zoho_configured else "skipped",
-            "found"    : 0,
-            "done"     : 0,
-            "total"    : len(all_invoice_nos),
-            "draft_id" : draft_id,
+            "status" : "fetching" if zoho_configured else "skipped",
+            "found"  : 0,
+            "done"   : 0,
+            "total"  : len(all_invoice_nos),
+            "draft_id": draft_id,
         }
 
-        # ── Background thread: fetch PDFs without blocking the response ─────
         def bg_fetch(draft_id, all_invoice_nos, tmp_dir):
             try:
                 if not zoho_configured:
@@ -598,7 +594,7 @@ def draft_email():
                 pdf_map = {}
                 found   = 0
                 done    = 0
-                print(f"[BG] Fetching {total} PDFs from Zoho (one by one with live count)...")
+                print(f"[BG] Fetching {total} PDFs from Zoho...")
 
                 for inv_no in all_invoice_nos:
                     inv_no_str = str(inv_no).strip()
@@ -618,14 +614,11 @@ def draft_email():
                         print(f"[BG] Error on {inv_no_str}: {ex}")
                         pdf_map[inv_no_str] = None
                     finally:
-                        # Always increment done — even if invoice not found or error
                         done += 1
-                    # Update live count — directly update dict in place
                     if draft_id in pdf_status:
                         pdf_status[draft_id]["done"]  = done
                         pdf_status[draft_id]["found"] = found
 
-                # All done — update draft entries with attachments
                 if draft_id in drafts:
                     for e in drafts[draft_id]:
                         atts, missing = [], []
@@ -651,7 +644,6 @@ def draft_email():
 
         threading.Thread(target=bg_fetch, args=(draft_id, all_invoice_nos, tmp_dir), daemon=True).start()
 
-        # ── Return draft immediately ────────────────────────────────────────
         previews = [{
             "salesperson" : e["salesperson"],
             "to_email"    : e["to_email"],
@@ -673,7 +665,6 @@ def draft_email():
 
 @app.route("/api/pdf_status/<draft_id>")
 def pdf_status_route(draft_id):
-    """Poll this to check if background PDF fetch is complete."""
     status = dict(pdf_status.get(draft_id, {"status": "unknown"}))
 
     if draft_id in drafts:
@@ -689,6 +680,7 @@ def pdf_status_route(draft_id):
                 "salesperson" : e["salesperson"],
                 "pdf_count"   : e.get("pdf_count", 0),
                 "missing_note": missing_note,
+                "missing_pdfs": [str(x) for x in e.get("missing_pdfs", [])],
                 "invoice_list": e.get("invoice_list", []),
             })
         status["tabs"] = tabs
@@ -698,21 +690,15 @@ def pdf_status_route(draft_id):
 
 @app.route("/api/update_draft", methods=["POST"])
 def update_draft():
-    """
-    Save edits made in the UI back to the in-memory draft.
-    Accepts: draft_id, tab_index, to_email, cc_list (array), subject, body_html
-    """
     try:
-        body       = request.get_json()
-        draft_id   = body.get("draft_id", "").strip()
-        tab_index  = int(body.get("tab_index", 0))
+        body      = request.get_json()
+        draft_id  = body.get("draft_id", "").strip()
+        tab_index = int(body.get("tab_index", 0))
 
         if draft_id not in drafts:
             return jsonify({"error": "Draft not found."}), 404
 
         entry = drafts[draft_id][tab_index]
-
-        # Update editable fields
         if "to_email"  in body: entry["to_email"]  = body["to_email"].strip()
         if "cc_list"   in body: entry["cc_list"]   = [e.strip() for e in body["cc_list"] if e.strip()]
         if "subject"   in body: entry["subject"]   = body["subject"].strip()
@@ -722,9 +708,6 @@ def update_draft():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-# Store send results: { send_id -> { status, message } }
-send_results = {}
 
 @app.route("/api/confirm_send", methods=["POST"])
 def confirm_send():
@@ -739,7 +722,6 @@ def confirm_send():
         if draft_id not in drafts:
             return jsonify({"error": "Draft not found or already sent. Please preview again."}), 404
 
-        # Wait max 15s for PDFs if still fetching
         waited = 0
         while pdf_status.get(draft_id, {}).get("status") == "fetching" and waited < 15:
             time.sleep(1); waited += 1
@@ -747,7 +729,6 @@ def confirm_send():
         draft_entries = drafts.pop(draft_id)
         pdf_status.pop(draft_id, None)
 
-        # Generate a send_id to track result
         send_id = secrets.token_hex(6)
         send_results[send_id] = {"status": "sending"}
 
@@ -759,8 +740,8 @@ def confirm_send():
                         p for p in e.get("attachments", [])
                         if p and os.path.exists(p)
                     ]
-                    print(f"[Send] Sending to {e['to_email']} with {len(valid_attachments)} PDF(s)")
-                    send_via_smtp(
+                    print(f"[Send] Sending to {e['to_email']} with {len(valid_attachments)} PDF(s) via SendGrid")
+                    send_via_sendgrid(
                         to_email         = e["to_email"],
                         cc_list          = e["cc_list"],
                         subject          = e["subject"],
@@ -787,7 +768,6 @@ def confirm_send():
 @app.route("/api/send_status/<send_id>")
 def send_status(send_id):
     result = send_results.get(send_id, {"status": "unknown"})
-    # Clean up once done
     if result.get("status") in ("done", "error"):
         send_results.pop(send_id, None)
     return jsonify(result)
