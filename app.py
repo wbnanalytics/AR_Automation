@@ -44,6 +44,7 @@ ZOHO_API_BASE     = f"https://www.zohoapis.{ZOHO_REGION}/books/v3"
 SENDGRID_API_URL  = "https://api.sendgrid.com/v3/mail/send"
 
 REQUIRED_COLUMNS = {
+    "channel_name",
     "Age", "Balance_Due", "Customer_Name", "Due_Date",
     "Inv_date", "Invoice_no.", "Salesperson",
     "Salesperson_mail_id", "Unused_Credits",
@@ -279,8 +280,9 @@ def df_to_records(df):
     rows = []
     for _, r in df.iterrows():
         rows.append({
-            "invoice_no"  : str(r["Invoice_no."]),
-            "customer"    : str(r["Customer_Name"]),
+            "invoice_no"    : str(r["Invoice_no."]),
+            "channel_name" : str(r.get("channel_name", "Unmapped Channel")),
+            "customer"      : str(r["Customer_Name"]),
             "salesperson" : str(r["Salesperson"]),
             "email"       : str(r["Salesperson_mail_id"]),
             "inv_date"    : format_date(r["Inv_date"]),
@@ -478,7 +480,7 @@ def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("analytics.html")
 
 
 @app.route("/api/options")
@@ -487,6 +489,7 @@ def options():
         df = load_data()
         return jsonify({
             "customers"     : sorted(df["Customer_Name"].dropna().unique().tolist()),
+            "channels"      : sorted(df["channel_name"].dropna().unique().tolist()),
             "salespersons"  : sorted(df["Salesperson"].dropna().unique().tolist()),
             "invoices"      : sorted(df["Invoice_no."].dropna().unique().tolist()),
             "aging_buckets" : list(AGING_BUCKETS.keys()),
@@ -790,6 +793,27 @@ def zoho_callback():
   -d "grant_type=authorization_code"</pre>
     </body></html>"""
 
+@app.route("/email")
+def email_dashboard():
+       return render_template("index.html")
+ 
+ 
+@app.route("/api/analytics")
+def analytics_data():
+       """Returns all records + pre-computed analytics for the dashboard."""
+       try:
+           df = load_data()
+ 
+           records = df_to_records(df)
+ 
+           return jsonify({
+                "records": records,
+                "total"  : len(records),
+           })
+       except Exception as e:
+           import traceback; traceback.print_exc()
+           return jsonify({"error": str(e)}), 500
+ 
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)

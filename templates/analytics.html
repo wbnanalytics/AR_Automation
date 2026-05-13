@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AR Analytics · Wellbeing Nutrition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --navy:      #1a3c6e;
+  --navy-dark: #122d54;
+  --navy-mid:  #234e8a;
+  --accent:    #3a6fd8;
+  --red:       #c0392b;
+  --green:     #0f6e56;
+  --orange:    #b45309;
+  --purple:    #6d28d9;
+  --teal:      #0e7490;
+  --bg:        #eef2f8;
+  --card:      #ffffff;
+  --border:    #d5dff0;
+  --border2:   #e8eef8;
+  --muted:     #6b7a99;
+  --dim:       #8a9bb8;
+  --text:      #1c2640;
+  --gradient:  linear-gradient(135deg, #1a3c6e 0%, #234e8a 55%, #1e6091 100%);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+
+/* ── TOP BAR ── */
+.top-bar{
+  background:linear-gradient(90deg,#0b5e48,#1a3c6e);
+  color:rgba(255,255,255,.75);text-align:center;
+  font-size:11.5px;font-weight:500;padding:7px 20px;letter-spacing:.3px;
+}
+.top-bar span{color:#7eb3ff;font-weight:600;}
+
+/* ── HEADER ── */
+header{
+  background:var(--gradient);
+  padding:0 40px;height:72px;
+  display:flex;align-items:center;justify-content:space-between;
+  box-shadow:0 4px 20px rgba(0,0,0,.22);
+  position:sticky;top:0;z-index:100;
+}
+.header-brand{display:flex;align-items:center;gap:14px;}
+.logo-wrap{display:flex;align-items:center;gap:12px;text-decoration:none;}
+.logo-img{height:54px;width:auto;object-fit:contain;filter:brightness(0) invert(1);}
+.logo-text-wrap{display:flex;flex-direction:column;line-height:1.2;}
+.logo-company{font-size:16px;font-weight:800;color:#fff;letter-spacing:-.3px;}
+.logo-tagline{font-size:9.5px;font-weight:400;color:rgba(255,255,255,.55);letter-spacing:1.4px;text-transform:uppercase;}
+.header-divider{width:1px;height:28px;background:rgba(255,255,255,.22);}
+.header-module{font-size:22px;font-weight:700;color:rgba(255,255,255,.95);letter-spacing:-.2px;white-space:nowrap;}
+.header-center{
+  display:flex;align-items:center;gap:4px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);
+  border-radius:8px;padding:3px;
+}
+.nav-btn{
+  padding:5px 16px;border-radius:6px;
+  font-family:'Inter',sans-serif;font-size:12px;font-weight:500;
+  color:rgba(255,255,255,.7);cursor:pointer;border:none;background:none;
+  transition:all .18s;letter-spacing:.2px;
+}
+.nav-btn.active{background:rgba(255,255,255,.2);color:#fff;font-weight:600;}
+.nav-btn:hover:not(.active){color:#fff;background:rgba(255,255,255,.08);}
+.header-right{display:flex;align-items:center;gap:10px;}
+.live-badge{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.18);
+  color:#c8d9f5;font-size:11px;font-weight:500;
+  padding:5px 12px;border-radius:20px;font-family:'JetBrains Mono',monospace;
+}
+.live-dot{width:6px;height:6px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.refresh-btn{
+  display:flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.18);
+  color:rgba(255,255,255,.8);font-size:11.5px;font-weight:500;
+  padding:6px 14px;border-radius:8px;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all .18s;
+}
+.refresh-btn:hover{background:rgba(255,255,255,.18);}
+.go-email-btn{
+  display:flex;align-items:center;gap:8px;
+  background:#fff;color:var(--navy);
+  font-size:12px;font-weight:700;
+  padding:7px 16px;border-radius:8px;cursor:pointer;border:none;
+  box-shadow:0 2px 10px rgba(0,0,0,.15);
+  transition:all .18s;font-family:'Inter',sans-serif;
+  text-decoration:none;letter-spacing:.1px;
+}
+.go-email-btn:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(0,0,0,.2);}
+
+/* ── PAGE ── */
+.page{max-width:1200px;margin:0 auto;padding:28px 24px 80px;}
+
+/* ── HERO ── */
+.hero{
+  background:var(--gradient);
+  padding:30px 40px 26px;
+  position:relative;overflow:hidden;margin-bottom:0;
+}
+.hero::before{content:'';position:absolute;top:-60px;right:-60px;width:240px;height:240px;border-radius:50%;background:rgba(255,255,255,.04);pointer-events:none;}
+.hero-inner{max-width:1200px;margin:0 auto;position:relative;z-index:1;}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);
+  color:#a5c8ff;font-size:10px;font-weight:600;
+  padding:3px 11px;border-radius:20px;
+  letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;
+}
+.hero h1{font-size:24px;font-weight:800;color:#fff;letter-spacing:-.3px;line-height:1.2;margin-bottom:6px;}
+.hero h1 em{font-style:normal;color:#7eb3ff;}
+.hero-sub{font-size:12px;color:rgba(255,255,255,.55);}
+
+/* ── KPI GRID ── */
+.kpi-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  gap:12px;margin-bottom:22px;margin-top:24px;
+}
+@media(max-width:900px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
+@media(max-width:560px){.kpi-grid{grid-template-columns:repeat(2,1fr);}}
+
+.kpi-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:16px 18px 14px;
+  position:relative;overflow:hidden;
+  box-shadow:0 2px 12px rgba(26,60,110,.07);
+  transition:transform .18s,box-shadow .18s;cursor:default;
+}
+.kpi-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(26,60,110,.12);}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+.kpi-card.red::before   {background:linear-gradient(90deg,#9b1c1c,var(--red));}
+.kpi-card.orange::before{background:linear-gradient(90deg,#78350f,var(--orange));}
+.kpi-card.blue::before  {background:linear-gradient(90deg,var(--navy),var(--accent));}
+.kpi-card.cyan::before  {background:linear-gradient(90deg,#134e4a,#14b8a6);}
+.kpi-card.green::before {background:linear-gradient(90deg,#064e3b,var(--green));}
+.kpi-card.purple::before{background:linear-gradient(90deg,#4c1d95,var(--purple));}
+
+/* glow removed — not needed on light theme */
+.kpi-glow{display:none;}
+
+.kpi-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);margin-bottom:8px;}
+.kpi-value{font-family:'JetBrains Mono',monospace;font-size:18px;font-weight:500;line-height:1;margin-bottom:5px;}
+.kpi-value.large{font-size:16px;}
+.kpi-card.red    .kpi-value{color:var(--red);}
+.kpi-card.orange .kpi-value{color:var(--orange);}
+.kpi-card.blue   .kpi-value{color:var(--navy);}
+.kpi-card.cyan   .kpi-value{color:var(--teal);}
+.kpi-card.green  .kpi-value{color:var(--green);}
+.kpi-card.purple .kpi-value{color:var(--purple);}
+.kpi-sub{font-size:10px;color:var(--muted);}
+
+/* ── SECTION LABEL ── */
+.section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;margin-top:22px;}
+.section-label{
+  display:flex;align-items:center;gap:8px;
+  font-size:10px;font-weight:700;text-transform:uppercase;
+  letter-spacing:1.2px;color:var(--muted);
+}
+.section-label::before{content:'';width:16px;height:1px;background:var(--accent);}
+.section-label::after{content:'';flex:1;height:1px;background:var(--border);margin-left:8px;}
+
+/* ── GRIDS ── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+@media(max-width:780px){.grid-2,.grid-3{grid-template-columns:1fr;}}
+
+/* ── CHART CARD ── */
+.chart-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:14px;padding:20px 22px;
+  box-shadow:0 2px 14px rgba(26,60,110,.06);
+}
+.chart-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px;}
+.chart-sub{font-size:11px;color:var(--muted);margin-bottom:16px;}
+
+/* ── AGING BARS ── */
+.aging-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
+.aging-bar-row:last-child{margin-bottom:0;}
+.aging-label{font-size:11px;color:var(--muted);width:96px;flex-shrink:0;}
+.aging-track{flex:1;height:7px;background:#eef2f8;border-radius:4px;overflow:hidden;position:relative;}
+.aging-fill{height:100%;border-radius:4px;transition:width 1.2s cubic-bezier(.22,1,.36,1);}
+.aging-amount{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);width:62px;text-align:right;flex-shrink:0;}
+
+/* ── DONUT ── */
+.donut-wrap{display:flex;align-items:center;justify-content:center;gap:22px;margin-top:4px;}
+.donut-svg{flex-shrink:0;}
+.donut-legend{display:flex;flex-direction:column;gap:8px;}
+.legend-item{display:flex;align-items:center;gap:7px;font-size:11.5px;color:var(--text);}
+.legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.legend-pct{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);margin-left:auto;padding-left:10px;}
+
+/* ── RANKING ── */
+.rank-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border2);}
+.rank-row:last-child{border-bottom:none;}
+.rank-num{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;width:18px;text-align:center;color:var(--dim);flex-shrink:0;}
+.rank-num.gold{color:#d97706;}
+.rank-num.silver{color:#94a3b8;}
+.rank-num.bronze{color:#b45309;}
+.rank-name{flex:1;font-size:12.5px;font-weight:500;color:var(--text);}
+.rank-bar-wrap{width:100px;height:5px;background:#eef2f8;border-radius:3px;flex-shrink:0;}
+.rank-bar{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--navy),var(--accent));}
+.rank-amount{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);width:64px;text-align:right;flex-shrink:0;}
+
+/* ── FASTEST BADGE ── */
+.fastest-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#f0fdf4;border:1px solid #bbf7d0;
+  color:var(--green);font-size:11px;font-weight:600;
+  padding:4px 12px;border-radius:20px;margin-top:12px;
+}
+
+/* ── RISK CARDS ── */
+.risk-card{background:#fff5f5;border:1px solid #fecaca;border-radius:10px;padding:11px 13px;margin-bottom:8px;}
+.risk-card:last-child{margin-bottom:0;}
+.risk-customer{font-size:12.5px;font-weight:600;color:#991b1b;margin-bottom:3px;}
+.risk-detail{font-size:10.5px;color:#b91c1c;opacity:.75;}
+.risk-amount{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--red);margin-top:5px;}
+.risk-footer{font-size:10.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.risk-footer span{color:var(--red);font-weight:600;}
+
+/* ── CREDIT CARDS ── */
+.credit-card-item{background:#fffbeb;border:1px solid #fde68a;border-radius:10px;padding:11px 13px;margin-bottom:8px;}
+.credit-card-item:last-child{margin-bottom:0;}
+.credit-customer{font-size:12.5px;font-weight:600;color:#92400e;margin-bottom:3px;}
+.credit-detail{font-size:10.5px;color:#b45309;opacity:.75;}
+.credit-amount{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--orange);margin-top:5px;}
+.credit-footer{font-size:10.5px;color:var(--muted);margin-top:12px;padding-top:10px;border-top:1px solid var(--border);}
+.credit-footer span{color:var(--orange);font-weight:600;}
+
+/* ── CHANNEL CARDS ── */
+.channel-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px;}
+@media(max-width:700px){.channel-grid{grid-template-columns:repeat(2,1fr);}}
+.channel-card{
+  background:linear-gradient(135deg,#f8faff,#eef2f8);
+  border:1px solid var(--border);border-radius:12px;
+  padding:14px 12px;text-align:center;
+  position:relative;overflow:hidden;transition:transform .18s;
+}
+.channel-card:hover{transform:translateY(-2px);}
+.channel-icon{font-size:18px;margin-bottom:7px;}
+.channel-name{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;}
+.channel-amount{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:500;color:var(--navy);margin-bottom:3px;}
+.channel-count{font-size:10px;color:var(--dim);}
+.channel-bar{position:absolute;bottom:0;left:0;right:0;height:3px;}
+
+/* ── TREND CHART ── */
+.trend-months{display:flex;align-items:flex-end;justify-content:space-between;height:90px;gap:5px;margin-bottom:6px;}
+.trend-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;}
+.trend-bar{
+  width:100%;border-radius:4px 4px 0 0;
+  background:linear-gradient(180deg,var(--accent),var(--navy));
+  min-height:3px;transition:height 1s cubic-bezier(.22,1,.36,1);
+}
+.trend-bar.current{background:linear-gradient(180deg,#10b981,var(--green));box-shadow:0 0 8px rgba(15,110,86,.3);}
+.trend-month{font-size:9px;color:var(--dim);font-weight:500;}
+.trend-footer{display:flex;gap:18px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border);}
+.trend-stat{font-size:11px;color:var(--muted);}
+.trend-stat strong{font-family:'JetBrains Mono',monospace;display:block;font-size:14px;color:var(--text);margin-bottom:2px;}
+
+/* ── CTA ── */
+.cta-section{text-align:center;padding:40px 20px 16px;margin-top:24px;}
+.cta-btn{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--gradient);color:#fff;
+  font-family:'Inter',sans-serif;font-size:14px;font-weight:700;
+  padding:14px 32px;border-radius:12px;cursor:pointer;border:none;
+  box-shadow:0 4px 20px rgba(26,60,110,.3);
+  transition:all .2s;text-decoration:none;letter-spacing:.2px;
+}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 8px 30px rgba(26,60,110,.45);}
+.cta-sub{font-size:11.5px;color:var(--muted);margin-top:10px;}
+
+/* ── LOADING ── */
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;transition:opacity .4s;}
+.loading-overlay.hidden{opacity:0;pointer-events:none;}
+.loader-inner{text-align:center;}
+.loader-ring{width:38px;height:38px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loader-text{font-size:12px;color:var(--muted);}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--navy);color:#fff;padding:11px 17px;border-radius:10px;font-size:12.5px;font-weight:500;box-shadow:0 8px 28px rgba(0,0,0,.2);transform:translateY(80px);opacity:0;transition:all .3s;z-index:999;}
+.toast.show{transform:translateY(0);opacity:1;}
+
+/* ── FOOTER ── */
+footer{background:var(--navy-dark);color:rgba(255,255,255,.4);text-align:center;font-size:11px;padding:18px;letter-spacing:.3px;}
+footer strong{color:rgba(255,255,255,.65);}
+
+
+/* ═══════════════════════════════════════════════════════
+   VISUAL ENHANCEMENT ONLY — bigger, fuller, more interactive
+   Functionality / API / data logic unchanged
+═══════════════════════════════════════════════════════ */
+body{font-size:15px;}
+header{height:82px;padding:0 48px;}
+.logo-img{height:62px;}
+.header-module{font-size:24px;}
+.header-center{padding:4px;border-radius:10px;}
+.nav-btn{font-size:13px;padding:8px 22px;border-radius:8px;}
+.live-badge{font-size:12px;padding:7px 15px;}
+.refresh-btn{font-size:12.5px;padding:8px 16px;}
+.go-email-btn{font-size:13px;padding:10px 20px;border-radius:10px;}
+
+.hero{padding:46px 48px 42px;}
+.hero::before{width:320px;height:320px;top:-90px;right:-80px;}
+.hero-inner{max-width:1360px;}
+.hero-eyebrow{font-size:11px;padding:5px 14px;margin-bottom:13px;}
+.hero h1{font-size:34px;margin-bottom:9px;}
+.hero-sub{font-size:14px;color:rgba(255,255,255,.68);}
+
+.page{max-width:1360px;padding:42px 28px 90px;}
+.kpi-grid{gap:18px;margin-top:26px;margin-bottom:30px;}
+.kpi-card{border-radius:16px;padding:22px 22px 19px;box-shadow:0 8px 26px rgba(26,60,110,.08);}
+.kpi-card:hover{transform:translateY(-4px);box-shadow:0 14px 36px rgba(26,60,110,.16);}
+.kpi-card::before{height:4px;}
+.kpi-label{font-size:10px;margin-bottom:11px;letter-spacing:1px;}
+.kpi-value{font-size:24px;margin-bottom:8px;}
+.kpi-value.large{font-size:22px;}
+.kpi-sub{font-size:12px;}
+
+.section-row{margin-top:30px;margin-bottom:16px;}
+.section-label{font-size:12px;letter-spacing:1.3px;}
+.section-label::before{width:22px;height:2px;}
+.grid-2{gap:20px;}
+.grid-3{gap:20px;}
+.chart-card{border-radius:18px;padding:28px 30px;box-shadow:0 8px 28px rgba(26,60,110,.08);transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease;}
+.chart-card:hover{transform:translateY(-3px);box-shadow:0 16px 42px rgba(26,60,110,.14);border-color:#b9c9e4;}
+.chart-title{font-size:17px;margin-bottom:5px;}
+.chart-sub{font-size:13px;margin-bottom:22px;}
+
+.aging-bar-row{gap:15px;margin-bottom:16px;}
+.aging-label{font-size:13px;width:118px;}
+.aging-track{height:10px;border-radius:8px;}
+.aging-amount{font-size:13px;width:82px;}
+
+.donut-wrap{gap:34px;margin-top:10px;}
+.donut-svg{width:170px;height:170px;}
+.legend-item{font-size:13px;gap:9px;}
+.legend-dot{width:10px;height:10px;}
+.legend-pct{font-size:12px;}
+
+.rank-row{gap:14px;padding:12px 0;}
+.rank-num{font-size:14px;width:24px;}
+.rank-name{font-size:15px;}
+.rank-bar-wrap{width:150px;height:8px;border-radius:8px;}
+.rank-amount{font-size:13px;width:84px;}
+.fastest-badge{font-size:13px;padding:8px 16px;margin-top:18px;}
+
+.risk-card,.credit-card-item{border-radius:13px;padding:15px 16px;margin-bottom:11px;transition:transform .18s ease, box-shadow .18s ease;}
+.risk-card:hover,.credit-card-item:hover{transform:translateX(3px);box-shadow:0 8px 18px rgba(26,60,110,.08);}
+.risk-customer,.credit-customer{font-size:14px;}
+.risk-detail,.credit-detail{font-size:12px;}
+.risk-amount,.credit-amount{font-size:15px;}
+.risk-footer,.credit-footer{font-size:12px;}
+
+.channel-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px;margin-top:14px!important;}
+.channel-card{border-radius:16px;padding:21px 16px 20px;box-shadow:0 6px 18px rgba(26,60,110,.06);}
+.channel-card:hover{transform:translateY(-4px);box-shadow:0 14px 28px rgba(26,60,110,.13);}
+.channel-icon{font-size:25px;margin-bottom:10px;}
+.channel-name{font-size:12px;line-height:1.25;margin-bottom:9px;}
+.channel-amount{font-size:18px;margin-bottom:5px;}
+.channel-count{font-size:12px;}
+.channel-bar{height:4px;}
+
+.trend-months{height:125px;gap:8px;margin-top:20px!important;}
+.trend-bar{border-radius:7px 7px 0 0;}
+.trend-footer{gap:28px;margin-top:18px;padding-top:17px;}
+.trend-stat{font-size:13px;}
+.trend-stat strong{font-size:17px;}
+
+.cta-section{padding:52px 20px 20px;margin-top:34px;}
+.cta-btn{font-size:17px;padding:18px 42px;border-radius:15px;}
+.cta-btn:hover{transform:translateY(-4px) scale(1.01);}
+.cta-sub{font-size:13px;margin-top:14px;}
+footer{font-size:12.5px;padding:22px;}
+
+@media(max-width:1100px){
+  .kpi-grid{grid-template-columns:repeat(3,1fr);}
+  .grid-3{grid-template-columns:1fr;}
+}
+@media(max-width:780px){
+  header{padding:0 18px;height:auto;min-height:82px;gap:12px;flex-wrap:wrap;}
+  .header-center{order:3;width:100%;justify-content:center;margin-bottom:10px;}
+  .header-right{gap:8px;flex-wrap:wrap;justify-content:flex-end;}
+  .hero h1{font-size:28px;}
+  .kpi-grid{grid-template-columns:repeat(2,1fr);}
+  .page{padding:28px 16px 70px;}
+}
+
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loader-inner">
+    <div class="loader-ring"></div>
+    <div class="loader-text">Loading AR Analytics…</div>
+  </div>
+</div>
+
+<div class="top-bar">
+  🔒 Internal Tool &nbsp;·&nbsp; <span>Accounts Receivable Automation</span> &nbsp;
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="header-brand">
+    <a class="logo-wrap" href="/">
+      <img class="logo-img" src="/static/logo.png" alt="Wellbeing Nutrition"
+           onerror="this.style.display='none';document.getElementById('lf').style.display='flex';"/>
+      <div class="logo-text-wrap" id="lf" style="display:none;">
+        <span class="logo-company">Wellbeing Nutrition</span>
+        <span class="logo-tagline">Finance &amp; Accounts</span>
+      </div>
+    </a>
+    <div class="header-divider"></div>
+    <span class="header-module">AR Analytics Dashboard</span>
+  </div>
+  <div class="header-center">
+    <button class="nav-btn active" onclick="window.location.href='/'">Analytics</button>
+    <button class="nav-btn" onclick="window.location.href='/email'">Email Dashboard</button>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>Live</div>
+    <button class="refresh-btn" onclick="loadAnalytics()">↻ Refresh Data</button>
+    <a href="/email" class="go-email-btn">Send Emails to Salespersons →</a>
+  </div>
+</header>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">📊 Finance Module</div>
+    <h1>AR <em>Analytics</em></h1>
+    <p class="hero-sub">Accounts Receivable Intelligence &nbsp;·&nbsp; <span id="updatedTime">Updated: Loading…</span></p>
+  </div>
+</div>
+
+<!-- PAGE -->
+<div class="page">
+
+  <!-- KPI STRIP -->
+  <div class="kpi-grid" id="kpiGrid">
+    <div class="kpi-card red"><div class="kpi-glow"></div><div class="kpi-label">Total Outstanding</div><div class="kpi-value large" id="kpi-total">—</div><div class="kpi-sub">Across all invoices</div></div>
+    <div class="kpi-card orange"><div class="kpi-glow"></div><div class="kpi-label">Unused Credits</div><div class="kpi-value large" id="kpi-credits">—</div><div class="kpi-sub">Available to apply</div></div>
+    <div class="kpi-card blue"><div class="kpi-glow"></div><div class="kpi-label">Net Outstanding</div><div class="kpi-value large" id="kpi-net">—</div><div class="kpi-sub">After credits</div></div>
+    <div class="kpi-card cyan"><div class="kpi-glow"></div><div class="kpi-label">Total Invoices</div><div class="kpi-value" id="kpi-invoices">—</div><div class="kpi-sub">Open invoices</div></div>
+    <div class="kpi-card green"><div class="kpi-glow"></div><div class="kpi-label">Customers</div><div class="kpi-value" id="kpi-customers">—</div><div class="kpi-sub">With dues</div></div>
+    <div class="kpi-card purple"><div class="kpi-glow"></div><div class="kpi-label">Salespersons</div><div class="kpi-value" id="kpi-salespersons">—</div><div class="kpi-sub">Active accounts</div></div>
+  </div>
+
+  <!-- ROW 1: AGING + DONUT -->
+  <div class="section-row">
+    <div class="section-label">Aging Analysis &amp; Customer Distribution</div>
+  </div>
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-title">Aging bucket breakdown</div>
+      <div class="chart-sub">Outstanding amount by overdue days</div>
+      <div id="agingBars"></div>
+      <div style="display:flex;gap:20px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Avg Overdue Days</div><div style="font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--red);font-weight:500;" id="avgAge">—</div></div>
+        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Critical (120+)</div><div style="font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--orange);font-weight:500;" id="criticalPct">—</div></div>
+        <div><div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Due This Week</div><div style="font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--teal);font-weight:500;" id="dueWeek">—</div></div>
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Top customers by outstanding</div>
+      <div class="chart-sub">Distribution of balance due</div>
+      <div class="donut-wrap">
+        <svg class="donut-svg" width="130" height="130" viewBox="0 0 130 130" id="donutSvg">
+          <circle cx="65" cy="65" r="50" fill="none" stroke="#eef2f8" stroke-width="22"/>
+        </svg>
+        <div class="donut-legend" id="donutLegend"></div>
+      </div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">
+        Most pending invoices: <span style="color:var(--text);font-weight:600;" id="topCustomer">—</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--accent);margin-left:8px;" id="topCustomerCount">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ROW 2: SALESPERSON RANKING + RISK + CREDITS -->
+  <div class="section-row">
+    <div class="section-label">Salesperson Performance &amp; Risk Alerts</div>
+  </div>
+  <div class="grid-3" style="margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-title">Salesperson ranking</div>
+      <div class="chart-sub">By total outstanding amount</div>
+      <div id="rankingRows"></div>
+      <div id="fastestBadge"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Critical risk alerts</div>
+      <div class="chart-sub">Invoices overdue 180+ days</div>
+      <div id="riskCards"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Idle unused credits</div>
+      <div class="chart-sub">Credits sitting unused — money on table</div>
+      <div id="creditCards"></div>
+    </div>
+  </div>
+
+  <!-- ROW 3: CHANNEL + TREND -->
+  <div class="section-row">
+    <div class="section-label">Channel Breakdown &amp; Monthly Trend</div>
+  </div>
+  <div class="grid-2" style="margin-bottom:16px;">
+    <div class="chart-card">
+      <div class="chart-title">Outstanding by channel</div>
+      <div class="chart-sub">Which channel owes the most</div>
+      <div class="channel-grid" id="channelGrid" style="margin-top:12px;"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Month-wise invoice trend</div>
+      <div class="chart-sub">Invoices raised per month (FY 2025–26)</div>
+      <div class="trend-months" id="trendBars" style="margin-top:16px;"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:4px;" id="trendMonthLabels"></div>
+      <div class="trend-footer" id="trendFooter"></div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <a href="/email" class="cta-btn">Go to Email Dashboard →</a>
+    <div class="cta-sub">Search overdue invoices · Preview email drafts · Send to salespersons</div>
+  </div>
+
+</div><!-- /page -->
+
+<footer>
+  <strong>Wellbeing Nutrition</strong> &nbsp;·&nbsp; AR Analytics Dashboard
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════════════════════════════════════
+   HELPERS
+════════════════════════════════════════════ */
+function fmtCr(val) {
+  if (!val || isNaN(val)) return '₹ 0';
+  const n = parseFloat(val);
+  if (n >= 1e7) return '₹ ' + (n/1e7).toFixed(1) + 'Cr';
+  if (n >= 1e5) return '₹ ' + (n/1e5).toFixed(1) + 'L';
+  if (n >= 1e3) return '₹ ' + (n/1e3).toFixed(1) + 'K';
+  return '₹ ' + n.toFixed(0);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+const DONUT_COLORS  = ['#1a3c6e','#3a6fd8','#b45309','#6d28d9','#0f6e56','#c0392b','#0e7490'];
+const AGING_COLORS  = ['#0f6e56','#3a6fd8','#b45309','#c0392b','#7f1d1d'];
+const CHANNEL_ICONS = {'Retail - General Trade':'🏪','Retail - Partnerships':'🤝','Retail - Modern Trade':'🏬','Retail - Distributors':'🚚','Retail - EBO':'🏷️','E-Commerce':'💻','Healthcare':'🏥','General Trade':'🏪','Modern Trade':'🏬','Partnerships':'🤝'};
+const CHANNEL_COLORS= ['#1a3c6e','#0f6e56','#b45309','#6d28d9','#0e7490','#c0392b'];
+
+/* ════════════════════════════════════════════
+   LOAD DATA FROM API
+════════════════════════════════════════════ */
+async function loadAnalytics() {
+  try {
+    const res  = await fetch('/api/analytics');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    renderAll(data);
+    document.getElementById('updatedTime').textContent = 'Updated: Today ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+  } catch(e) {
+    try { await buildFromSearchApi(); }
+    catch(e2) { showToast('Error loading data: ' + e2.message); }
+  }
+}
+
+/* ════════════════════════════════════════════
+   BUILD ANALYTICS FROM EXISTING /api/search
+════════════════════════════════════════════ */
+async function buildFromSearchApi() {
+  const optRes  = await fetch('/api/options');
+  const optData = await optRes.json();
+  if (optData.error) throw new Error(optData.error);
+
+  let allRecords = [];
+  for (const sp of optData.salespersons) {
+    const res  = await fetch('/api/search?salesperson=' + encodeURIComponent(sp));
+    const data = await res.json();
+    if (data.records) allRecords = allRecords.concat(data.records);
+  }
+
+  const seen = new Set();
+  allRecords = allRecords.filter(r => { if(seen.has(r.invoice_no)) return false; seen.add(r.invoice_no); return true; });
+
+  buildAnalytics(allRecords, optData);
+}
+
+function buildAnalytics(records, optData) {
+  const totalOut  = records.reduce((s,r) => s + (r.balance||0), 0);
+  const totalCred = records.reduce((s,r) => s + (r.unused||0), 0);
+  const netOut    = totalOut - totalCred;
+  const customers = new Set(records.map(r => r.customer)).size;
+  const salespersons = new Set(records.map(r => r.salesperson)).size;
+
+  document.getElementById('kpi-total').textContent        = fmtCr(totalOut);
+  document.getElementById('kpi-credits').textContent      = fmtCr(totalCred);
+  document.getElementById('kpi-net').textContent          = fmtCr(netOut);
+  document.getElementById('kpi-invoices').textContent     = records.length;
+  document.getElementById('kpi-customers').textContent    = customers;
+  document.getElementById('kpi-salespersons').textContent = salespersons;
+
+  // Aging buckets
+  const aging = {
+    '1–30 days':   records.filter(r=>r.age>=1  && r.age<=30),
+    '31–60 days':  records.filter(r=>r.age>=31 && r.age<=60),
+    '61–90 days':  records.filter(r=>r.age>=61 && r.age<=90),
+    '91–120 days': records.filter(r=>r.age>=91 && r.age<=120),
+    'Above 120':   records.filter(r=>r.age>120),
+  };
+  const agingAmounts = Object.values(aging).map(g => g.reduce((s,r)=>s+(r.balance||0),0));
+  const maxAging = Math.max(...agingAmounts, 1);
+
+  let agingHtml = '';
+  Object.keys(aging).forEach((label, i) => {
+    const amt = agingAmounts[i];
+    const pct = Math.round((amt/maxAging)*100);
+    agingHtml += `<div class="aging-bar-row">
+      <span class="aging-label">${label}</span>
+      <div class="aging-track"><div class="aging-fill" style="width:0%;background:${AGING_COLORS[i]};" data-w="${pct}"></div></div>
+      <span class="aging-amount">${fmtCr(amt)}</span>
+    </div>`;
+  });
+  document.getElementById('agingBars').innerHTML = agingHtml;
+
+  const ages    = records.map(r=>r.age).filter(a=>typeof a==='number' && !isNaN(a));
+  const avgAge  = ages.length ? Math.round(ages.reduce((s,a)=>s+a,0)/ages.length) : 0;
+  const critical= records.filter(r=>r.age>120).length;
+  const critPct = records.length ? ((critical/records.length)*100).toFixed(1) : 0;
+  document.getElementById('avgAge').textContent      = avgAge + ' days';
+  document.getElementById('criticalPct').textContent = critPct + '%';
+  document.getElementById('dueWeek').textContent     = records.filter(r=>r.age>=0&&r.age<=7).length + ' inv';
+
+  // Donut
+  const custMap = {};
+  records.forEach(r => { custMap[r.customer] = (custMap[r.customer]||0) + (r.balance||0); });
+  const sorted    = Object.entries(custMap).sort((a,b)=>b[1]-a[1]);
+  const top5      = sorted.slice(0,5);
+  const others    = sorted.slice(5).reduce((s,e)=>s+e[1],0);
+  const donutData = others > 0 ? [...top5, ['Others', others]] : top5;
+  const donutTotal= donutData.reduce((s,e)=>s+e[1],0);
+  renderDonut(donutData, donutTotal);
+
+  const topCust  = sorted[0]?.[0] || '—';
+  const topCount = records.filter(r=>r.customer===topCust).length;
+  document.getElementById('topCustomer').textContent      = topCust;
+  document.getElementById('topCustomerCount').textContent = topCount + ' invoices';
+
+  // Salesperson ranking
+  const spMap    = {};
+  records.forEach(r => { spMap[r.salesperson] = (spMap[r.salesperson]||0) + (r.balance||0); });
+  const spSorted = Object.entries(spMap).sort((a,b)=>b[1]-a[1]);
+  const maxSp    = spSorted[0]?.[1] || 1;
+  const medals   = ['gold','silver','bronze'];
+  let rankHtml   = '';
+  spSorted.slice(0,5).forEach(([name,amt],i) => {
+    const pct = Math.round((amt/maxSp)*100);
+    rankHtml += `<div class="rank-row">
+      <div class="rank-num ${medals[i]||''}">${i+1}</div>
+      <div class="rank-name">${name}</div>
+      <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%;"></div></div>
+      <div class="rank-amount">${fmtCr(amt)}</div>
+    </div>`;
+  });
+  document.getElementById('rankingRows').innerHTML = rankHtml;
+
+  const spAge = {}, spCnt = {};
+  records.forEach(r => {
+    if(typeof r.age==='number'&&!isNaN(r.age)){
+      spAge[r.salesperson]=(spAge[r.salesperson]||0)+r.age;
+      spCnt[r.salesperson]=(spCnt[r.salesperson]||0)+1;
+    }
+  });
+  const spAvgAge = Object.entries(spCnt).map(([name,cnt])=>({name,avg:Math.round(spAge[name]/cnt)}));
+  spAvgAge.sort((a,b)=>a.avg-b.avg);
+  const fastest = spAvgAge[0];
+  if(fastest) {
+    document.getElementById('fastestBadge').innerHTML = `<div class="fastest-badge">⚡ Fastest: ${fastest.name} · Avg ${fastest.avg} days</div>`;
+  }
+
+  // Critical risk (180+ days)
+  const riskByCust = {};
+  records.filter(r=>r.age>=180).forEach(r=>{
+    if(!riskByCust[r.customer]) riskByCust[r.customer]={total:0,maxAge:0,inv:[]};
+    riskByCust[r.customer].total+=r.balance||0;
+    riskByCust[r.customer].maxAge=Math.max(riskByCust[r.customer].maxAge,r.age||0);
+    riskByCust[r.customer].inv.push(r.invoice_no);
+  });
+  const riskSorted = Object.entries(riskByCust).sort((a,b)=>b[1].total-a[1].total).slice(0,3);
+  let riskHtml = '';
+  riskSorted.forEach(([cust,data])=>{
+    riskHtml+=`<div class="risk-card">
+      <div class="risk-customer">${cust}</div>
+      <div class="risk-detail">Invoice ${data.inv[0]} · ${data.maxAge} days overdue</div>
+      <div class="risk-amount">${fmtCr(data.total)}</div>
+    </div>`;
+  });
+  const bigRisk = records.filter(r=>r.age>=180&&r.balance>=100000).length;
+  riskHtml+=`<div class="risk-footer">Large invoices above ₹1L overdue: <span>${bigRisk} invoices</span></div>`;
+  document.getElementById('riskCards').innerHTML = riskHtml || '<div style="color:var(--muted);font-size:12px;padding:16px 0;">No critical risks found 🎉</div>';
+
+  // Idle credits
+  const creditMap = {};
+  records.forEach(r=>{
+    if((r.unused||0)>0){
+      if(!creditMap[r.customer]) creditMap[r.customer]={total:0,age:0};
+      creditMap[r.customer].total+=r.unused;
+      creditMap[r.customer].age=Math.max(creditMap[r.customer].age,r.age||0);
+    }
+  });
+  const creditSorted    = Object.entries(creditMap).sort((a,b)=>b[1].total-a[1].total).slice(0,3);
+  let creditHtml        = '';
+  creditSorted.forEach(([cust,data])=>{
+    creditHtml+=`<div class="credit-card-item">
+      <div class="credit-customer">${cust}</div>
+      <div class="credit-detail">Sitting idle ${data.age} days · Not applied</div>
+      <div class="credit-amount">${fmtCr(data.total)}</div>
+    </div>`;
+  });
+  const totalIdleAmt    = Object.values(creditMap).reduce((s,v)=>s+v.total,0);
+  const totalIdleCusts  = Object.keys(creditMap).length;
+  creditHtml+=`<div class="credit-footer">Total idle credits: <span>${fmtCr(totalIdleAmt)}</span> across ${totalIdleCusts} customers</div>`;
+  document.getElementById('creditCards').innerHTML = creditHtml || '<div style="color:var(--muted);font-size:12px;padding:16px 0;">No idle credits found</div>';
+
+  // Channel breakdown — uses channel_name from data
+  const chanMap = {};
+  records.forEach(r=>{
+    const channel = (r.channel_name || r.channel || 'Unmapped Channel').trim();
+    if(!chanMap[channel]) chanMap[channel] = {total:0, cnt:0};
+    chanMap[channel].total += r.balance || 0;
+    chanMap[channel].cnt   += 1;
+  });
+  const chanData = Object.entries(chanMap)
+    .sort((a,b)=>b[1].total-a[1].total)
+    .map(([name,data],i)=>({
+      name, amt:data.total, cnt:data.cnt,
+      icon:  CHANNEL_ICONS[name] || '🏷️',
+      color: CHANNEL_COLORS[i % CHANNEL_COLORS.length]
+    }));
+  let chanHtml = '';
+  chanData.forEach(c=>{
+    const pct = totalOut ? Math.round((c.amt/totalOut)*100) : 0;
+    chanHtml+=`<div class="channel-card">
+      <div class="channel-icon">${c.icon}</div>
+      <div class="channel-name">${c.name}</div>
+      <div class="channel-amount">${fmtCr(c.amt)}</div>
+      <div class="channel-count">${pct}% of total · ${c.cnt} inv</div>
+      <div class="channel-bar" style="background:${c.color};"></div>
+    </div>`;
+  });
+  document.getElementById('channelGrid').innerHTML = chanHtml || '<div style="color:var(--muted);font-size:12px;padding:16px 0;">No channel data found</div>';
+
+  // Month-wise trend
+  const monthMap  = {};
+  const months    = ['Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar'];
+  records.forEach(r=>{
+    if(r.inv_date){
+      const parts = r.inv_date.split('-');
+      if(parts.length===3){
+        const lbl = new Date(2000,parseInt(parts[1])-1,1).toLocaleString('en',{month:'short'});
+        monthMap[lbl]=(monthMap[lbl]||0)+1;
+      }
+    }
+  });
+  const trendData  = months.map(m=>({m, cnt:monthMap[m]||0}));
+  const maxTrend   = Math.max(...trendData.map(d=>d.cnt),1);
+  let barsHtml='', labelsHtml='';
+  const nowMonth   = new Date().toLocaleString('en',{month:'short'});
+  trendData.forEach(d=>{
+    const h     = Math.round((d.cnt/maxTrend)*84)+3;
+    const isCur = d.m===nowMonth;
+    barsHtml   +=`<div class="trend-bar-wrap"><div class="trend-bar ${isCur?'current':''}" style="height:${h}px;" title="${d.m}: ${d.cnt} invoices"></div></div>`;
+    labelsHtml +=`<div style="flex:1;text-align:center;font-size:9px;color:${isCur?'var(--green)':'var(--dim)'};">${d.m}</div>`;
+  });
+  document.getElementById('trendBars').innerHTML        = barsHtml;
+  document.getElementById('trendMonthLabels').innerHTML = labelsHtml;
+
+  const peakMonth   = trendData.reduce((a,b)=>b.cnt>a.cnt?b:a,{m:'—',cnt:0});
+  const curMonthCnt = monthMap[nowMonth]||0;
+  document.getElementById('trendFooter').innerHTML = `
+    <div class="trend-stat"><strong>${peakMonth.m}</strong>Peak Month</div>
+    <div class="trend-stat"><strong>${curMonthCnt} inv</strong>Due This Month</div>
+    <div class="trend-stat"><strong>${records.filter(r=>r.age>=0&&r.age<=7).length} inv</strong>Due This Week</div>`;
+
+  // Animate aging bars
+  setTimeout(()=>{
+    document.querySelectorAll('.aging-fill').forEach(el=>{ el.style.width = el.dataset.w + '%'; });
+  }, 100);
+
+  document.getElementById('loadingOverlay').classList.add('hidden');
+  document.getElementById('updatedTime').textContent = 'Updated: Today ' + new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+}
+
+/* ════════════════════════════════════════════
+   DONUT CHART
+════════════════════════════════════════════ */
+function renderDonut(data, total) {
+  const cx=65, cy=65, r=50, stroke=22;
+  const circ = 2*Math.PI*r;
+  let offset=0, svgPaths='', legendHtml='';
+
+  data.forEach((item,i)=>{
+    const [name,val] = item;
+    const pct   = val/total;
+    const dash  = pct*circ;
+    const color = DONUT_COLORS[i % DONUT_COLORS.length];
+    svgPaths+=`<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}"
+      style="transform:rotate(-90deg);transform-origin:${cx}px ${cy}px;"/>`;
+    offset += dash;
+    legendHtml+=`<div class="legend-item">
+      <div class="legend-dot" style="background:${color};"></div>
+      <span>${name.length>14?name.slice(0,14)+'…':name}</span>
+      <span class="legend-pct">${Math.round(pct*100)}%</span>
+    </div>`;
+  });
+
+  svgPaths+=`<text x="65" y="61" text-anchor="middle" font-family="JetBrains Mono" font-size="12" fill="#1c2640" font-weight="500">${data.length}</text>
+  <text x="65" y="75" text-anchor="middle" font-family="Inter" font-size="9" fill="#6b7a99">customers</text>`;
+
+  document.getElementById('donutSvg').innerHTML  = svgPaths;
+  document.getElementById('donutLegend').innerHTML = legendHtml;
+}
+
+/* ════════════════════════════════════════════
+   RENDER FROM /api/analytics
+════════════════════════════════════════════ */
+function renderAll(data) {
+  buildAnalytics(data.records || [], {salespersons:[], invoices:[]});
+}
+
+window.addEventListener('DOMContentLoaded', () => { loadAnalytics(); });
+</script>
+</body>
+</html>

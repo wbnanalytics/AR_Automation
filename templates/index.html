@@ -49,6 +49,19 @@
   .logo-tagline { font-size: 10px; font-weight: 400; color: rgba(255,255,255,.55); letter-spacing: 1.4px; text-transform: uppercase; }
   .header-divider { width: 1px; height: 32px; background: rgba(255,255,255,.22); }
   .header-module { font-size: 22px; font-weight: 700; color: rgba(255,255,255,.95); }
+  .header-center {
+    display: flex; align-items: center; gap: 4px;
+    background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+    border-radius: 8px; padding: 3px;
+  }
+  .nav-btn {
+    padding: 5px 16px; border-radius: 6px;
+    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500;
+    color: rgba(255,255,255,.7); cursor: pointer; border: none; background: none;
+    transition: all .18s; letter-spacing: .2px;
+  }
+  .nav-btn.active { background: rgba(255,255,255,.2); color: #fff; font-weight: 600; }
+  .nav-btn:hover:not(.active) { color: #fff; background: rgba(255,255,255,.08); }
   .header-right { display: flex; align-items: center; gap: 12px; }
   .status-pill {
     display: flex; align-items: center; gap: 7px;
@@ -461,7 +474,11 @@
       </div>
     </a>
     <div class="header-divider"></div>
-    <span class="header-module">AR Dashboard</span>
+    <span class="header-module">AR Email Dashboard</span>
+  </div>
+  <div class="header-center">
+    <button class="nav-btn" onclick="window.location.href='/'">Analytics</button>
+    <button class="nav-btn active" onclick="window.location.href='/email'">Email Dashboard</button>
   </div>
   <div class="header-right">
     <div class="status-pill">
@@ -696,7 +713,7 @@
 </div><!-- /page -->
 
 <footer>
-  <strong>Wellbeing Nutrition</strong> &nbsp;·&nbsp; AR Invoice Dashboard
+  <strong>Wellbeing Nutrition</strong> &nbsp;·&nbsp; AR Email Dashboard
 </footer>
 
 <div class="toast" id="toast">
