@@ -73,6 +73,17 @@ pdf_status   = {}
 send_results = {}
 
 
+def safe_upload_filename(filename):
+    """Return a safe PDF filename without requiring extra dependencies."""
+    base = os.path.basename(str(filename or "uploaded.pdf"))
+    safe = "".join(c if c.isalnum() or c in "-_. " else "_" for c in base).strip()
+    if not safe:
+        safe = "uploaded.pdf"
+    if not safe.lower().endswith(".pdf"):
+        safe += ".pdf"
+    return safe
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  ZOHO ACCESS TOKEN MANAGER
 # ══════════════════════════════════════════════════════════════════════════════
@@ -190,7 +201,56 @@ def load_excel_from_gdrive():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def format_date(value):
-    return value.strftime("%d-%m-%Y") if pd.notna(value) else ""
+    """Return dates exactly as DD-MM-YYYY without browser/locale date swapping."""
+    if pd.isna(value):
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    return value.strftime("%d-%m-%Y")
+
+
+def normalize_date_for_display(value):
+    """
+    Normalise Excel/Google Sheet dates to DD-MM-YYYY.
+
+    Important: strings like 01-03-2026 are treated as DD-MM-YYYY,
+    not MM-DD-YYYY, so 01-03-2026 remains 01-03-2026.
+    """
+    if pd.isna(value):
+        return ""
+
+    if isinstance(value, pd.Timestamp):
+        return value.strftime("%d-%m-%Y")
+
+    # Excel serial date fallback, if a date column is exported as a number.
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        try:
+            return pd.to_datetime(value, unit="D", origin="1899-12-30").strftime("%d-%m-%Y")
+        except Exception:
+            return str(value).strip()
+
+    text = str(value).strip()
+    if not text or text.lower() in ("nan", "nat", "none"):
+        return ""
+
+    # Preserve DD-MM-YYYY / DD/MM/YYYY exactly, with zero-padding.
+    import re
+    m = re.match(r"^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$", text)
+    if m:
+        dd, mm, yyyy = m.groups()
+        return f"{int(dd):02d}-{int(mm):02d}-{yyyy}"
+
+    # Handle YYYY-MM-DD if it appears from another export/source.
+    m = re.match(r"^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$", text)
+    if m:
+        yyyy, mm, dd = m.groups()
+        return f"{int(dd):02d}-{int(mm):02d}-{yyyy}"
+
+    # Last fallback still uses Indian date order.
+    try:
+        return pd.to_datetime(text, dayfirst=True, errors="raise").strftime("%d-%m-%Y")
+    except Exception:
+        return text
 
 
 def format_currency(value):
@@ -241,8 +301,10 @@ def load_data():
         df = pd.read_excel(Path(__file__).parent / DATA_FILE)
     df.columns = [c.strip().replace(" ", "_") for c in df.columns]
     validate_columns(df)
+    # Keep dates in DD-MM-YYYY display format immediately after loading.
+    # This prevents 01-03-2026 from becoming 03-01-2026 in the dashboard.
     for col in DATE_COLUMNS:
-        df[col] = pd.to_datetime(df[col], dayfirst=True, errors="coerce")
+        df[col] = df[col].apply(normalize_date_for_display)
     df["Age"] = pd.to_numeric(df["Age"], errors="coerce")
 
     def clean_numeric(series):
@@ -420,21 +482,47 @@ The respective invoices are attached for your reference.</p>
 #  SENDGRID SENDER
 # ══════════════════════════════════════════════════════════════════════════════
 
+def split_email_list(value):
+    """Accept comma/semicolon separated emails and return a clean unique list."""
+    if not value:
+        return []
+    if isinstance(value, (list, tuple)):
+        raw_items = value
+    else:
+        raw_items = str(value).replace(";", ",").split(",")
+
+    emails = []
+    seen = set()
+    for item in raw_items:
+        email = str(item).strip()
+        if not email:
+            continue
+        key = email.lower()
+        if key not in seen:
+            seen.add(key)
+            emails.append(email)
+    return emails
+
+
 def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
     if not SENDGRID_API_KEY:
         raise RuntimeError("SENDGRID_API_KEY is missing in .env")
     if not SENDER_EMAIL:
         raise RuntimeError("SMTP_EMAIL (sender address) is missing in .env")
 
-    seen     = {to_email.lower()}
+    to_emails = split_email_list(to_email)
+    if not to_emails:
+        raise RuntimeError("At least one To email address is required.")
+
+    seen = {e.lower() for e in to_emails}
     clean_cc = []
     for e in (cc_list or []):
-        e = e.strip()
+        e = str(e).strip()
         if e and e.lower() not in seen:
             seen.add(e.lower())
             clean_cc.append(e)
 
-    personalizations = [{"to": [{"email": to_email}]}]
+    personalizations = [{"to": [{"email": e} for e in to_emails]}]
     if clean_cc:
         personalizations[0]["cc"] = [{"email": e} for e in clean_cc]
 
@@ -466,7 +554,7 @@ def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
         "Content-Type" : "application/json",
     }
 
-    print(f"[SendGrid] To={to_email} | CC={clean_cc} | PDFs={attached_count}")
+    print(f"[SendGrid] To={to_emails} | CC={clean_cc} | PDFs={attached_count}")
     resp = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=60)
 
     if resp.status_code not in (200, 202):
@@ -506,11 +594,13 @@ def search():
         salesperson = request.args.get("salesperson", "").strip()
         invoice     = request.args.get("invoice", "").strip()
         aging       = request.args.get("aging", "").strip()
+        channel     = request.args.get("channel", "").strip()
 
         mask = pd.Series([True] * len(df))
         if customer:    mask &= df["Customer_Name"].str.upper() == customer.upper()
         if salesperson: mask &= df["Salesperson"].str.upper() == salesperson.upper()
         if invoice:     mask &= df["Invoice_no."].str.upper() == invoice.upper()
+        if channel:     mask &= df["channel_name"].str.upper() == channel.upper()
 
         filtered = df[mask]
         if aging:
@@ -542,12 +632,14 @@ def draft_email():
         customer    = body.get("customer", "").strip()
         invoice     = body.get("invoice", "").strip()
         aging       = body.get("aging", "").strip()
+        channel     = body.get("channel", "").strip()
 
         df   = load_data()
         mask = pd.Series([True] * len(df))
         if salesperson: mask &= df["Salesperson"].str.upper() == salesperson.upper()
         if customer:    mask &= df["Customer_Name"].str.upper() == customer.upper()
         if invoice:     mask &= df["Invoice_no."].str.upper() == invoice.upper()
+        if channel:     mask &= df["channel_name"].str.upper() == channel.upper()
 
         filtered = df[mask]
         if aging:
@@ -572,6 +664,7 @@ def draft_email():
                 "subject"     : "Outstanding Invoices for Retail Customers",
                 "body_html"   : body_html,
                 "attachments" : [],
+                "custom_pdfs" : [],
                 "pdf_map"     : {},
                 "pdf_count"   : 0,
                 "missing_pdfs": [],
@@ -630,7 +723,8 @@ def draft_email():
                             if fp: atts.append(fp)
                             else:  missing.append(inv_no)
                         seen = set()
-                        e["attachments"]  = [p for p in atts if not (p in seen or seen.add(p))]
+                        custom_paths = [p.get("path") for p in e.get("custom_pdfs", []) if p.get("path")]
+                        e["attachments"]  = [p for p in (atts + custom_paths) if p and not (p in seen or seen.add(p))]
                         e["missing_pdfs"] = missing
                         e["pdf_count"]    = len(e["attachments"])
                         e["pdf_map"]      = pdf_map
@@ -656,6 +750,7 @@ def draft_email():
             "pdf_count"   : 0,
             "missing_note": "",
             "invoice_list": e["invoice_list"],
+            "custom_pdfs" : e.get("custom_pdfs", []),
             "pdf_loading" : zoho_configured,
         } for e in draft_entries]
 
@@ -685,11 +780,92 @@ def pdf_status_route(draft_id):
                 "missing_note": missing_note,
                 "missing_pdfs": [str(x) for x in e.get("missing_pdfs", [])],
                 "invoice_list": e.get("invoice_list", []),
+                "custom_pdfs" : [{"name": p.get("name", "custom.pdf")} for p in e.get("custom_pdfs", [])],
             })
         status["tabs"] = tabs
 
     return jsonify(status)
 
+
+
+@app.route("/api/upload_pdf", methods=["POST"])
+def upload_pdf():
+    try:
+        draft_id = request.form.get("draft_id", "").strip()
+        tab_index = int(request.form.get("tab_index", 0))
+        uploaded = request.files.get("pdf")
+
+        if not draft_id or draft_id not in drafts:
+            return jsonify({"error": "Draft not found. Please preview again."}), 404
+        if uploaded is None or not uploaded.filename:
+            return jsonify({"error": "No PDF file selected."}), 400
+        if not uploaded.filename.lower().endswith(".pdf"):
+            return jsonify({"error": "Only PDF files are allowed."}), 400
+        if tab_index < 0 or tab_index >= len(drafts[draft_id]):
+            return jsonify({"error": "Invalid draft tab."}), 400
+
+        entry = drafts[draft_id][tab_index]
+        upload_dir = tempfile.mkdtemp(prefix=f"custom_pdf_{draft_id}_")
+        safe_name = safe_upload_filename(uploaded.filename)
+        file_path = os.path.join(upload_dir, safe_name)
+        uploaded.save(file_path)
+
+        custom_item = {"name": safe_name, "path": file_path}
+        entry.setdefault("custom_pdfs", []).append(custom_item)
+
+        if file_path not in entry.setdefault("attachments", []):
+            entry["attachments"].append(file_path)
+        entry["pdf_count"] = len([p for p in entry.get("attachments", []) if p and os.path.exists(p)])
+
+        return jsonify({
+            "success": True,
+            "custom_pdfs": [{"name": p.get("name", "custom.pdf")} for p in entry.get("custom_pdfs", [])],
+            "pdf_count": entry["pdf_count"],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/remove_uploaded_pdf", methods=["POST"])
+def remove_uploaded_pdf():
+    try:
+        body = request.get_json() or {}
+        draft_id = str(body.get("draft_id", "")).strip()
+        tab_index = int(body.get("tab_index", 0))
+        filename = str(body.get("filename", "")).strip()
+
+        if not draft_id or draft_id not in drafts:
+            return jsonify({"error": "Draft not found. Please preview again."}), 404
+        if tab_index < 0 or tab_index >= len(drafts[draft_id]):
+            return jsonify({"error": "Invalid draft tab."}), 400
+
+        entry = drafts[draft_id][tab_index]
+        kept = []
+        removed_paths = []
+        for p in entry.get("custom_pdfs", []):
+            if p.get("name") == filename:
+                removed_paths.append(p.get("path"))
+            else:
+                kept.append(p)
+        entry["custom_pdfs"] = kept
+
+        for path in removed_paths:
+            if path in entry.get("attachments", []):
+                entry["attachments"].remove(path)
+            try:
+                if path and os.path.exists(path):
+                    os.remove(path)
+            except Exception:
+                pass
+
+        entry["pdf_count"] = len([p for p in entry.get("attachments", []) if p and os.path.exists(p)])
+        return jsonify({
+            "success": True,
+            "custom_pdfs": [{"name": p.get("name", "custom.pdf")} for p in entry.get("custom_pdfs", [])],
+            "pdf_count": entry["pdf_count"],
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/update_draft", methods=["POST"])
 def update_draft():

@@ -392,6 +392,72 @@ footer{font-size:12.5px;padding:22px;}
   .page{padding:28px 16px 70px;}
 }
 
+
+/* ═══════════════════════════════════════════════════════
+   CLICKABLE INSIGHT TOOLTIPS / DETAIL MODAL
+═══════════════════════════════════════════════════════ */
+.insight-click{cursor:pointer;position:relative;}
+.insight-click:hover{outline:2px solid rgba(58,111,216,.18);outline-offset:3px;}
+.insight-click::after{
+  content:'Click to view details';
+  position:absolute;left:50%;bottom:calc(100% + 10px);transform:translateX(-50%) translateY(6px);
+  background:#122d54;color:#fff;font-size:11px;font-weight:600;
+  padding:6px 9px;border-radius:8px;white-space:nowrap;
+  box-shadow:0 8px 22px rgba(18,45,84,.25);
+  opacity:0;pointer-events:none;transition:all .18s ease;z-index:50;
+}
+.insight-click:hover::after{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.detail-modal-overlay{
+  display:none;position:fixed;inset:0;background:rgba(18,45,84,.42);
+  backdrop-filter:blur(4px);z-index:1000;align-items:center;justify-content:center;
+  padding:24px;
+}
+.detail-modal-overlay.visible{display:flex;}
+.detail-modal{
+  width:min(1080px,96vw);max-height:86vh;overflow:hidden;
+  background:#fff;border:1px solid var(--border);border-radius:18px;
+  box-shadow:0 26px 80px rgba(18,45,84,.35);
+  animation:modalIn .18s ease-out;
+}
+@keyframes modalIn{from{opacity:0;transform:translateY(10px) scale(.98);}to{opacity:1;transform:translateY(0) scale(1);}}
+.detail-modal-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:18px;
+  padding:22px 26px;background:linear-gradient(135deg,#f8faff,#eef4ff);
+  border-bottom:1px solid var(--border);
+}
+.detail-modal-title{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:4px;}
+.detail-modal-sub{font-size:13px;color:var(--muted);line-height:1.45;}
+.detail-modal-close{
+  border:1px solid var(--border);background:#fff;color:var(--navy);
+  width:36px;height:36px;border-radius:10px;cursor:pointer;font-size:20px;line-height:1;
+  transition:all .15s ease;
+}
+.detail-modal-close:hover{background:#eef2f8;transform:translateY(-1px);}
+.detail-modal-body{padding:20px 26px 26px;overflow:auto;max-height:calc(86vh - 108px);}
+.detail-summary-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px;}
+.detail-summary-card{background:#f8faff;border:1px solid var(--border);border-radius:12px;padding:12px 14px;}
+.detail-summary-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:5px;}
+.detail-summary-value{font-family:'JetBrains Mono',monospace;font-size:16px;color:var(--navy);font-weight:600;}
+.detail-table-wrap{border:1px solid var(--border);border-radius:14px;overflow:auto;max-width:100%;}
+.detail-table{width:100%;border-collapse:collapse;font-size:12.5px;min-width:1320px;table-layout:fixed;}
+.detail-table thead tr{background:linear-gradient(135deg,var(--navy),var(--navy-mid));}
+.detail-table th{padding:12px 14px;text-align:left;color:#fff;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;white-space:nowrap;}
+.detail-table td{padding:12px 14px;border-bottom:1px solid var(--border2);vertical-align:middle;line-height:1.35;}
+.detail-table tbody tr:nth-child(even){background:#f9fbff;}
+.detail-table tbody tr:hover{background:#eef4ff;}
+.detail-table .col-invoice{width:150px;}
+.detail-table .col-customer{width:270px;}
+.detail-table .col-channel{width:210px;}
+.detail-table .col-salesperson{width:150px;}
+.detail-table .col-date{width:130px;white-space:nowrap;}
+.detail-table .col-age{width:70px;text-align:center;}
+.detail-table .col-money{width:150px;text-align:right;white-space:nowrap;font-family:'JetBrains Mono',monospace;}
+.detail-table td.col-invoice{font-weight:700;color:var(--text);}
+.detail-table td.col-date{font-family:'JetBrains Mono',monospace;font-size:12px;}
+.detail-empty{padding:26px;text-align:center;color:var(--muted);font-size:14px;background:#f8faff;border:1px dashed var(--border);border-radius:14px;}
+@media(max-width:780px){.detail-summary-grid{grid-template-columns:repeat(2,1fr);}.detail-modal-head{padding:18px;}.detail-modal-body{padding:16px;}}
+
 </style>
 </head>
 <body>
@@ -446,12 +512,12 @@ footer{font-size:12.5px;padding:22px;}
 
   <!-- KPI STRIP -->
   <div class="kpi-grid" id="kpiGrid">
-    <div class="kpi-card red"><div class="kpi-glow"></div><div class="kpi-label">Total Outstanding</div><div class="kpi-value large" id="kpi-total">—</div><div class="kpi-sub">Across all invoices</div></div>
-    <div class="kpi-card orange"><div class="kpi-glow"></div><div class="kpi-label">Unused Credits</div><div class="kpi-value large" id="kpi-credits">—</div><div class="kpi-sub">Available to apply</div></div>
-    <div class="kpi-card blue"><div class="kpi-glow"></div><div class="kpi-label">Net Outstanding</div><div class="kpi-value large" id="kpi-net">—</div><div class="kpi-sub">After credits</div></div>
-    <div class="kpi-card cyan"><div class="kpi-glow"></div><div class="kpi-label">Total Invoices</div><div class="kpi-value" id="kpi-invoices">—</div><div class="kpi-sub">Open invoices</div></div>
-    <div class="kpi-card green"><div class="kpi-glow"></div><div class="kpi-label">Customers</div><div class="kpi-value" id="kpi-customers">—</div><div class="kpi-sub">With dues</div></div>
-    <div class="kpi-card purple"><div class="kpi-glow"></div><div class="kpi-label">Salespersons</div><div class="kpi-value" id="kpi-salespersons">—</div><div class="kpi-sub">Active accounts</div></div>
+    <div class="kpi-card red insight-click" data-insight-type="kpi" data-insight-key="total"><div class="kpi-glow"></div><div class="kpi-label">Total Outstanding</div><div class="kpi-value large" id="kpi-total">—</div><div class="kpi-sub">Across all invoices</div></div>
+    <div class="kpi-card orange insight-click" data-insight-type="kpi" data-insight-key="credits"><div class="kpi-glow"></div><div class="kpi-label">Unused Credits</div><div class="kpi-value large" id="kpi-credits">—</div><div class="kpi-sub">Available to apply</div></div>
+    <div class="kpi-card blue insight-click" data-insight-type="kpi" data-insight-key="net"><div class="kpi-glow"></div><div class="kpi-label">Net Outstanding</div><div class="kpi-value large" id="kpi-net">—</div><div class="kpi-sub">After credits</div></div>
+    <div class="kpi-card cyan insight-click" data-insight-type="kpi" data-insight-key="invoices"><div class="kpi-glow"></div><div class="kpi-label">Total Invoices</div><div class="kpi-value" id="kpi-invoices">—</div><div class="kpi-sub">Open invoices</div></div>
+    <div class="kpi-card green insight-click" data-insight-type="kpi" data-insight-key="customers"><div class="kpi-glow"></div><div class="kpi-label">Customers</div><div class="kpi-value" id="kpi-customers">—</div><div class="kpi-sub">With dues</div></div>
+    <div class="kpi-card purple insight-click" data-insight-type="kpi" data-insight-key="salespersons"><div class="kpi-glow"></div><div class="kpi-label">Salespersons</div><div class="kpi-value" id="kpi-salespersons">—</div><div class="kpi-sub">Active accounts</div></div>
   </div>
 
   <!-- ROW 1: AGING + DONUT -->
@@ -539,6 +605,20 @@ footer{font-size:12.5px;padding:22px;}
   <strong>Wellbeing Nutrition</strong> &nbsp;·&nbsp; AR Analytics Dashboard
 </footer>
 
+
+<div class="detail-modal-overlay" id="detailModalOverlay" onclick="modalBackdropClose(event)">
+  <div class="detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailModalTitle">
+    <div class="detail-modal-head">
+      <div>
+        <div class="detail-modal-title" id="detailModalTitle">Details</div>
+        <div class="detail-modal-sub" id="detailModalSub">Click any insight card to view supporting invoices.</div>
+      </div>
+      <button class="detail-modal-close" onclick="closeDetailModal()" aria-label="Close">×</button>
+    </div>
+    <div class="detail-modal-body" id="detailModalBody"></div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -554,11 +634,146 @@ function fmtCr(val) {
   return '₹ ' + n.toFixed(0);
 }
 
+
+function fmtFullINR(val) {
+  const n = Number(val || 0);
+  const rounded = Math.round(n * 100) / 100;
+  const parts = rounded.toFixed(2).split('.');
+  let integer = parts[0];
+  const decimal = parts[1];
+  if (integer.length > 3) {
+    const last3 = integer.slice(-3);
+    let rest = integer.slice(0, -3);
+    rest = rest.replace(/\B(?=(\d{2})+(?!\d))/g, ',');
+    integer = rest + ',' + last3;
+  }
+  return decimal === '00' ? '₹ ' + integer : '₹ ' + integer + '.' + decimal;
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 3500);
 }
+
+
+let AR_DETAIL_RECORDS = [];
+
+function escHtml(v) {
+  return String(v ?? '').replace(/[&<>'"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));
+}
+
+function recordsForInsight(type, key) {
+  const records = AR_DETAIL_RECORDS || [];
+  if (type === 'kpi') {
+    if (key === 'credits') return records.filter(r => (r.unused || 0) > 0);
+    return records;
+  }
+  if (type === 'aging') {
+    const filters = {
+      '1–30 days':   r => r.age >= 1 && r.age <= 30,
+      '31–60 days':  r => r.age >= 31 && r.age <= 60,
+      '61–90 days':  r => r.age >= 61 && r.age <= 90,
+      '91–120 days': r => r.age >= 91 && r.age <= 120,
+      'Above 120':   r => r.age > 120,
+    };
+    return records.filter(filters[key] || (() => false));
+  }
+  if (type === 'customer') return records.filter(r => r.customer === key);
+  if (type === 'salesperson') return records.filter(r => r.salesperson === key);
+  if (type === 'risk') return records.filter(r => r.customer === key && r.age >= 180);
+  if (type === 'credit') return records.filter(r => r.customer === key && (r.unused || 0) > 0);
+  if (type === 'channel') return records.filter(r => ((r.channel_name || r.channel || 'Unmapped Channel').trim()) === key);
+  if (type === 'month') {
+    return records.filter(r => {
+      if (!r.inv_date) return false;
+      const parts = r.inv_date.split('-');
+      if (parts.length !== 3) return false;
+      const lbl = new Date(2000, parseInt(parts[1]) - 1, 1).toLocaleString('en', {month:'short'});
+      return lbl === key;
+    });
+  }
+  return records;
+}
+
+function insightTitle(type, key) {
+  const titles = {
+    total: 'Total Outstanding — Invoice Details',
+    credits: 'Unused Credits — Customer Details',
+    net: 'Net Outstanding — Invoice Details',
+    invoices: 'Total Open Invoices',
+    customers: 'Customers With Dues',
+    salespersons: 'Salespersons With Outstanding',
+  };
+  if (type === 'kpi') return titles[key] || 'AR Details';
+  if (type === 'aging') return `${key} Aging Bucket — Invoice Details`;
+  if (type === 'customer') return `${key} — Customer Outstanding`;
+  if (type === 'salesperson') return `${key} — Salesperson Outstanding`;
+  if (type === 'risk') return `${key} — Critical Risk Invoices`;
+  if (type === 'credit') return `${key} — Idle Credits`;
+  if (type === 'channel') return `${key} — Channel Outstanding`;
+  if (type === 'month') return `${key} FY 2025–26 — Monthly Invoice Details`;
+  return 'AR Details';
+}
+
+function openInsightDetail(type, key) {
+  const rows = recordsForInsight(type, key);
+  const total = rows.reduce((s,r) => s + (r.balance || 0), 0);
+  const unused = rows.reduce((s,r) => s + (r.unused || 0), 0);
+  const customers = new Set(rows.map(r => r.customer)).size;
+  const invoices = rows.length;
+
+  document.getElementById('detailModalTitle').textContent = insightTitle(type, key);
+  document.getElementById('detailModalSub').textContent = `${invoices} invoices · ${customers} customers · ${fmtFullINR(total)} outstanding · ${fmtFullINR(unused)} unused credits`;
+
+  const summaryHtml = `<div class="detail-summary-grid">
+    <div class="detail-summary-card"><div class="detail-summary-label">Invoices</div><div class="detail-summary-value">${invoices}</div></div>
+    <div class="detail-summary-card"><div class="detail-summary-label">Customers</div><div class="detail-summary-value">${customers}</div></div>
+    <div class="detail-summary-card"><div class="detail-summary-label">Outstanding</div><div class="detail-summary-value">${fmtFullINR(total)}</div></div>
+    <div class="detail-summary-card"><div class="detail-summary-label">Unused Credits</div><div class="detail-summary-value">${fmtFullINR(unused)}</div></div>
+  </div>`;
+
+  if (!rows.length) {
+    document.getElementById('detailModalBody').innerHTML = summaryHtml + '<div class="detail-empty">No matching invoice records found for this insight.</div>';
+  } else {
+    const sorted = [...rows].sort((a,b) => (b.balance || 0) - (a.balance || 0));
+    const tableRows = sorted.map(r => `<tr>
+      <td class="col-invoice">${escHtml(r.invoice_no)}</td>
+      <td class="col-customer">${escHtml(r.customer)}</td>
+      <td class="col-channel">${escHtml(r.channel_name || r.channel || 'Unmapped Channel')}</td>
+      <td class="col-salesperson">${escHtml(r.salesperson)}</td>
+      <td class="col-date">${escHtml(r.inv_date || '')}</td>
+      <td class="col-date">${escHtml(r.due_date || '')}</td>
+      <td class="col-age">${escHtml(r.age ?? '')}</td>
+      <td class="col-money">${fmtFullINR(r.balance || 0)}</td>
+      <td class="col-money">${fmtFullINR(r.unused || 0)}</td>
+    </tr>`).join('');
+    document.getElementById('detailModalBody').innerHTML = summaryHtml + `<div class="detail-table-wrap"><table class="detail-table">
+      <thead><tr><th class="col-invoice">Invoice No</th><th class="col-customer">Customer</th><th class="col-channel">Channel</th><th class="col-salesperson">Salesperson</th><th class="col-date">Invoice Date</th><th class="col-date">Due Date</th><th class="col-age">Age</th><th class="col-money">Balance</th><th class="col-money">Unused</th></tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table></div>`;
+  }
+
+  document.getElementById('detailModalOverlay').classList.add('visible');
+}
+
+function closeDetailModal() {
+  document.getElementById('detailModalOverlay').classList.remove('visible');
+}
+
+function modalBackdropClose(e) {
+  if (e.target.id === 'detailModalOverlay') closeDetailModal();
+}
+
+document.addEventListener('click', function(e) {
+  const el = e.target.closest('[data-insight-type]');
+  if (!el) return;
+  openInsightDetail(el.dataset.insightType, el.dataset.insightKey || '');
+});
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeDetailModal();
+});
 
 const DONUT_COLORS  = ['#1a3c6e','#3a6fd8','#b45309','#6d28d9','#0f6e56','#c0392b','#0e7490'];
 const AGING_COLORS  = ['#0f6e56','#3a6fd8','#b45309','#c0392b','#7f1d1d'];
@@ -603,6 +818,7 @@ async function buildFromSearchApi() {
 }
 
 function buildAnalytics(records, optData) {
+  AR_DETAIL_RECORDS = records || [];
   const totalOut  = records.reduce((s,r) => s + (r.balance||0), 0);
   const totalCred = records.reduce((s,r) => s + (r.unused||0), 0);
   const netOut    = totalOut - totalCred;
@@ -631,7 +847,7 @@ function buildAnalytics(records, optData) {
   Object.keys(aging).forEach((label, i) => {
     const amt = agingAmounts[i];
     const pct = Math.round((amt/maxAging)*100);
-    agingHtml += `<div class="aging-bar-row">
+    agingHtml += `<div class="aging-bar-row insight-click" data-insight-type="aging" data-insight-key="${label}">
       <span class="aging-label">${label}</span>
       <div class="aging-track"><div class="aging-fill" style="width:0%;background:${AGING_COLORS[i]};" data-w="${pct}"></div></div>
       <span class="aging-amount">${fmtCr(amt)}</span>
@@ -671,7 +887,7 @@ function buildAnalytics(records, optData) {
   let rankHtml   = '';
   spSorted.slice(0,5).forEach(([name,amt],i) => {
     const pct = Math.round((amt/maxSp)*100);
-    rankHtml += `<div class="rank-row">
+    rankHtml += `<div class="rank-row insight-click" data-insight-type="salesperson" data-insight-key="${name}">
       <div class="rank-num ${medals[i]||''}">${i+1}</div>
       <div class="rank-name">${name}</div>
       <div class="rank-bar-wrap"><div class="rank-bar" style="width:${pct}%;"></div></div>
@@ -705,7 +921,7 @@ function buildAnalytics(records, optData) {
   const riskSorted = Object.entries(riskByCust).sort((a,b)=>b[1].total-a[1].total).slice(0,3);
   let riskHtml = '';
   riskSorted.forEach(([cust,data])=>{
-    riskHtml+=`<div class="risk-card">
+    riskHtml+=`<div class="risk-card insight-click" data-insight-type="risk" data-insight-key="${cust}">
       <div class="risk-customer">${cust}</div>
       <div class="risk-detail">Invoice ${data.inv[0]} · ${data.maxAge} days overdue</div>
       <div class="risk-amount">${fmtCr(data.total)}</div>
@@ -727,7 +943,7 @@ function buildAnalytics(records, optData) {
   const creditSorted    = Object.entries(creditMap).sort((a,b)=>b[1].total-a[1].total).slice(0,3);
   let creditHtml        = '';
   creditSorted.forEach(([cust,data])=>{
-    creditHtml+=`<div class="credit-card-item">
+    creditHtml+=`<div class="credit-card-item insight-click" data-insight-type="credit" data-insight-key="${cust}">
       <div class="credit-customer">${cust}</div>
       <div class="credit-detail">Sitting idle ${data.age} days · Not applied</div>
       <div class="credit-amount">${fmtCr(data.total)}</div>
@@ -756,7 +972,7 @@ function buildAnalytics(records, optData) {
   let chanHtml = '';
   chanData.forEach(c=>{
     const pct = totalOut ? Math.round((c.amt/totalOut)*100) : 0;
-    chanHtml+=`<div class="channel-card">
+    chanHtml+=`<div class="channel-card insight-click" data-insight-type="channel" data-insight-key="${c.name}">
       <div class="channel-icon">${c.icon}</div>
       <div class="channel-name">${c.name}</div>
       <div class="channel-amount">${fmtCr(c.amt)}</div>
@@ -785,7 +1001,7 @@ function buildAnalytics(records, optData) {
   trendData.forEach(d=>{
     const h     = Math.round((d.cnt/maxTrend)*84)+3;
     const isCur = d.m===nowMonth;
-    barsHtml   +=`<div class="trend-bar-wrap"><div class="trend-bar ${isCur?'current':''}" style="height:${h}px;" title="${d.m}: ${d.cnt} invoices"></div></div>`;
+    barsHtml   +=`<div class="trend-bar-wrap insight-click" data-insight-type="month" data-insight-key="${d.m}"><div class="trend-bar ${isCur?'current':''}" style="height:${h}px;" title="${d.m}: ${d.cnt} invoices"></div></div>`;
     labelsHtml +=`<div style="flex:1;text-align:center;font-size:9px;color:${isCur?'var(--green)':'var(--dim)'};">${d.m}</div>`;
   });
   document.getElementById('trendBars').innerHTML        = barsHtml;
@@ -824,7 +1040,7 @@ function renderDonut(data, total) {
       stroke-dasharray="${dash} ${circ-dash}" stroke-dashoffset="${-offset}"
       style="transform:rotate(-90deg);transform-origin:${cx}px ${cy}px;"/>`;
     offset += dash;
-    legendHtml+=`<div class="legend-item">
+    legendHtml+=`<div class="legend-item insight-click" data-insight-type="customer" data-insight-key="${escHtml(name)}">
       <div class="legend-dot" style="background:${color};"></div>
       <span>${name.length>14?name.slice(0,14)+'…':name}</span>
       <span class="legend-pct">${Math.round(pct*100)}%</span>

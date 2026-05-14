@@ -357,6 +357,19 @@
     border: 1px solid #bbf7d0; font-family: 'JetBrains Mono', monospace;
   }
   .pdf-tag.missing { background: #fef9c3; color: #92400e; border-color: #fde68a; }
+  .pdf-tag.custom { background:#eef4ff; color:var(--navy); border-color:#bfdbfe; }
+  .pdf-remove { cursor:pointer; color:var(--muted); font-weight:800; margin-left:4px; }
+  .pdf-remove:hover { color:var(--red); }
+  .pdf-upload-wrap { display:none; align-items:center; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .pdf-upload-wrap.visible { display:flex; }
+  .pdf-upload-btn {
+    display:inline-flex; align-items:center; gap:7px;
+    background:#eef4ff; color:var(--navy); border:1.5px solid #bfdbfe;
+    font-family:'Inter',sans-serif; font-size:12px; font-weight:700;
+    padding:7px 12px; border-radius:9px; cursor:pointer; transition:all .15s;
+  }
+  .pdf-upload-btn:hover { background:#dbeafe; transform:translateY(-1px); }
+  .pdf-upload-help { font-size:11px; color:var(--muted); }
 
   .warning-row {
     margin-top: 10px; padding: 8px 12px; border-radius: 8px;
@@ -544,7 +557,13 @@
           <option value="">— All Overdue Days —</option>
         </select>
       </div>
-      <div></div>
+      <div class="field">
+        <label>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 21h18"/><path d="M5 21V7l8-4v18"/><path d="M19 21V11l-6-3"/><path d="M9 9h1M9 13h1M9 17h1"/></svg>
+          Channel Name
+        </label>
+        <select id="selChannel"><option value="">— All Channels —</option></select>
+      </div>
     </div>
     <div class="active-filters" id="activeFilters"></div>
     <div class="btn-row">
@@ -614,7 +633,7 @@
         <span class="meta-label">To</span>
         <div>
           <div class="meta-value" id="metaToView"></div>
-          <input class="meta-input" id="metaToInput" type="email" placeholder="recipient@example.com" style="display:none;"/>
+          <input class="meta-input" id="metaToInput" type="text" placeholder="email1@example.com, email2@example.com" style="display:none;"/>
         </div>
 
         <span class="meta-label">CC</span>
@@ -633,6 +652,11 @@
         <span class="meta-label">PDFs</span>
         <div>
           <div class="pdf-list" id="pdfList"></div>
+          <div class="pdf-upload-wrap" id="pdfUploadWrap">
+            <input type="file" id="pdfUploadInput" accept="application/pdf,.pdf" style="display:none;" onchange="uploadCustomPdf(this)"/>
+            <button type="button" class="pdf-upload-btn" onclick="document.getElementById('pdfUploadInput').click();">＋ Add PDF from Computer</button>
+            <span class="pdf-upload-help">Custom PDFs will be attached with this salesperson email.</span>
+          </div>
         </div>
 
       </div>
@@ -745,6 +769,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     populateAc('Customer',    data.customers);
     populateAc('Salesperson', data.salespersons);
     populate('selInvoice',    data.invoices);
+    populate('selChannel',    data.channels || []);
     populateAging(data.aging_buckets);
     dot.classList.remove('loading');
     status.textContent = `${data.invoices.length} invoices loaded`;
@@ -774,10 +799,9 @@ const acData = { Customer: [], Salesperson: [] };
 let   acActiveIdx = { Customer: -1, Salesperson: -1 };
 
 function populate(id, items) {
-  if (id === 'selInvoice') {
-    const sel = document.getElementById(id);
-    items.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
-  }
+  const sel = document.getElementById(id);
+  if (!sel) return;
+  items.forEach(v => { const o = document.createElement('option'); o.value = v; o.textContent = v; sel.appendChild(o); });
 }
 
 function populateAc(field, items) {
@@ -871,13 +895,15 @@ async function doSearch() {
   const salesperson = document.getElementById('selSalesperson').value;
   const invoice     = document.getElementById('selInvoice').value;
   const aging       = document.getElementById('selAging').value;
-  if (!customer && !salesperson && !invoice && !aging) { showToast('Please select at least one filter.', 'error'); return; }
+  const channel     = document.getElementById('selChannel').value;
+  if (!customer && !salesperson && !invoice && !aging && !channel) { showToast('Please select at least one filter.', 'error'); return; }
 
   const params = new URLSearchParams();
   if (customer)    params.set('customer',    customer);
   if (salesperson) params.set('salesperson', salesperson);
   if (invoice)     params.set('invoice',     invoice);
   if (aging)       params.set('aging',       aging);
+  if (channel)     params.set('channel',     channel);
 
   try {
     const res  = await fetch('/api/search?' + params);
@@ -894,6 +920,7 @@ function clearSearch() {
   document.getElementById('selSalesperson').value = '';
   document.getElementById('selInvoice').value     = '';
   document.getElementById('selAging').value       = '';
+  document.getElementById('selChannel').value     = '';
   ['Customer','Salesperson'].forEach(f => {
     document.getElementById(`acDrop${f}`).classList.remove('open');
     document.getElementById(`acClear${f}`).style.display = 'none';
@@ -909,6 +936,12 @@ function clearSearch() {
 /* ══════════════════════════════════════════════════════════════════
    RENDER RESULTS
 ══════════════════════════════════════════════════════════════════ */
+function safeDateText(value) {
+  // Backend sends DD-MM-YYYY text. Do not create JS Date objects here,
+  // because browser locale parsing can swap day and month.
+  return value || '';
+}
+
 function ageClass(age) {
   if (typeof age !== 'number') return 'age-low';
   if (age > 120) return 'age-critical';
@@ -944,7 +977,7 @@ function renderResults(records, summary) {
     rows += `<tr>
       <td><span class="inv-chip">${r.invoice_no}</span></td>
       <td>${r.customer}</td><td>${r.salesperson}</td>
-      <td class="center">${r.inv_date}</td><td class="center">${r.due_date}</td>
+      <td class="center">${safeDateText(r.inv_date)}</td><td class="center">${safeDateText(r.due_date)}</td>
       <td class="center"><span class="${ac}">${r.age}</span></td>
       <td class="right">${r.balance_fmt}</td>
     </tr>`;
@@ -976,6 +1009,7 @@ async function doDraft() {
     salesperson : document.getElementById('selSalesperson').value,
     invoice     : document.getElementById('selInvoice').value,
     aging       : document.getElementById('selAging').value,
+    channel     : document.getElementById('selChannel').value,
   };
 
   try {
@@ -1042,6 +1076,7 @@ async function pollPdfStatus(draft_id) {
               currentPreviews[i].missing_note = tab.missing_note;
               currentPreviews[i].missing_pdfs = tab.missing_pdfs || [];
               currentPreviews[i].pdf_count    = tab.pdf_count;
+              currentPreviews[i].custom_pdfs  = tab.custom_pdfs || currentPreviews[i].custom_pdfs || [];
               currentPreviews[i].pdf_loading  = false;
             }
           });
@@ -1118,17 +1153,7 @@ function renderTab(i) {
 
   renderCcTags(i, isEditMode);
 
-  const pdfEl      = document.getElementById('pdfList');
-  const invList    = p.invoice_list || [];
-  const missingSet = new Set((p.missing_pdfs || []).map(String));
-  if (invList.length > 0) {
-    pdfEl.innerHTML = invList.map(inv => {
-      const missing = missingSet.has(String(inv));
-      return `<span class="pdf-tag ${missing ? 'missing' : ''}">${missing ? '⚠' : '📄'} ${inv}.pdf</span>`;
-    }).join('');
-  } else {
-    pdfEl.innerHTML = `<span style="color:var(--muted);font-size:12px;">No PDFs</span>`;
-  }
+  renderPdfList(i);
 
   const warnEl = document.getElementById('warningRow');
   if (p.missing_note) {
@@ -1170,6 +1195,7 @@ function applyEditModeDisplay() {
   const iframeWrap = document.getElementById('draftIframeWrap');
   const editBody   = document.getElementById('draftEditableBody');
   const subtitle   = document.getElementById('draftSubtitle');
+  const pdfUploadWrap = document.getElementById('pdfUploadWrap');
 
   if (isEditMode) {
     btnToggle.textContent = '👁 View Mode';
@@ -1186,6 +1212,8 @@ function applyEditModeDisplay() {
     document.getElementById('metaSubjectInput').style.display = 'block';
 
     renderCcTags(activeTabIndex, true);
+    if (pdfUploadWrap) pdfUploadWrap.classList.add('visible');
+    renderPdfList(activeTabIndex);
     editBody.focus();
   } else {
     btnToggle.textContent = '✏️ Edit Draft';
@@ -1202,6 +1230,8 @@ function applyEditModeDisplay() {
     document.getElementById('metaSubjectInput').style.display = 'none';
 
     renderCcTags(activeTabIndex, false);
+    if (pdfUploadWrap) pdfUploadWrap.classList.remove('visible');
+    renderPdfList(activeTabIndex);
 
     const edit   = localEdits[activeTabIndex];
     const iframe = document.getElementById('draftIframe');
@@ -1211,6 +1241,84 @@ function applyEditModeDisplay() {
     };
     document.getElementById('metaToView').textContent       = edit.to;
     document.getElementById('metaSubjectView').textContent  = edit.subject;
+  }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   PDF ATTACHMENT EDITING
+══════════════════════════════════════════════════════════════════ */
+function renderPdfList(tabIdx) {
+  const p = currentPreviews[tabIdx];
+  const pdfEl = document.getElementById('pdfList');
+  if (!p || !pdfEl) return;
+
+  const invList = p.invoice_list || [];
+  const missingSet = new Set((p.missing_pdfs || []).map(String));
+  const customPdfs = p.custom_pdfs || [];
+  const parts = [];
+
+  invList.forEach(inv => {
+    const missing = missingSet.has(String(inv));
+    parts.push(`<span class="pdf-tag ${missing ? 'missing' : ''}">${missing ? '⚠' : '📄'} ${inv}.pdf</span>`);
+  });
+
+  customPdfs.forEach(pdf => {
+    const name = pdf.name || 'custom.pdf';
+    const removeBtn = isEditMode
+      ? `<span class="pdf-remove" title="Remove uploaded PDF" onclick="removeCustomPdf('${name.replace(/'/g, "\\'")}')">×</span>`
+      : '';
+    parts.push(`<span class="pdf-tag custom">📎 ${name}${removeBtn}</span>`);
+  });
+
+  pdfEl.innerHTML = parts.length
+    ? parts.join('')
+    : `<span style="color:var(--muted);font-size:12px;">No PDFs</span>`;
+}
+
+async function uploadCustomPdf(input) {
+  const file = input.files && input.files[0];
+  if (!file) return;
+  if (!currentDraftId) { showToast('Please create a draft first.', 'error'); input.value = ''; return; }
+  if (!file.name.toLowerCase().endsWith('.pdf')) { showToast('Only PDF files are allowed.', 'error'); input.value = ''; return; }
+
+  const form = new FormData();
+  form.append('draft_id', currentDraftId);
+  form.append('tab_index', activeTabIndex);
+  form.append('pdf', file);
+
+  try {
+    showToast('Uploading PDF…', '');
+    const res = await fetch('/api/upload_pdf', { method:'POST', body: form });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentPreviews[activeTabIndex].custom_pdfs = data.custom_pdfs || [];
+    currentPreviews[activeTabIndex].pdf_count = data.pdf_count || currentPreviews[activeTabIndex].pdf_count;
+    renderPdfList(activeTabIndex);
+    showToast('PDF added to this draft.', 'success');
+  } catch(e) {
+    showToast('PDF upload failed: ' + e.message, 'error');
+  } finally {
+    input.value = '';
+  }
+}
+
+async function removeCustomPdf(filename) {
+  if (!currentDraftId) return;
+  try {
+    const res = await fetch('/api/remove_uploaded_pdf', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ draft_id: currentDraftId, tab_index: activeTabIndex, filename })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    currentPreviews[activeTabIndex].custom_pdfs = data.custom_pdfs || [];
+    currentPreviews[activeTabIndex].pdf_count = data.pdf_count || currentPreviews[activeTabIndex].pdf_count;
+    renderPdfList(activeTabIndex);
+    showToast('Uploaded PDF removed.', 'success');
+  } catch(e) {
+    showToast('Could not remove PDF: ' + e.message, 'error');
   }
 }
 
@@ -1254,12 +1362,26 @@ function applyFontSize(size) {
   setTimeout(() => { document.getElementById('fontSizeSelect').value = ''; }, 200);
 }
 
+
+function splitToEmails(value) {
+  return String(value || '')
+    .replace(/;/g, ',')
+    .split(',')
+    .map(e => e.trim())
+    .filter(Boolean);
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    SAVE EDITS
 ══════════════════════════════════════════════════════════════════ */
 function captureEditableContent() {
   const edit    = localEdits[activeTabIndex];
-  edit.to       = document.getElementById('metaToInput').value.trim();
+  const toList  = splitToEmails(document.getElementById('metaToInput').value);
+  edit.to       = toList.join(', ');
   edit.subject  = document.getElementById('metaSubjectInput').value.trim();
   edit.bodyHtml = document.getElementById('draftEditableBody').innerHTML;
 }
@@ -1269,6 +1391,13 @@ function saveEditsToLocal() { captureEditableContent(); }
 async function saveEdits() {
   saveEditsToLocal();
   const edit = localEdits[activeTabIndex];
+  const toList = splitToEmails(edit.to);
+  const badTo = toList.find(e => !isValidEmail(e));
+  if (!toList.length || badTo) {
+    showToast(badTo ? 'Invalid To email: ' + badTo : 'Please enter at least one To email.', 'error');
+    return;
+  }
+  edit.to = toList.join(', ');
   try {
     const res = await fetch('/api/update_draft', {
       method : 'POST',
@@ -1313,6 +1442,8 @@ function hideDraftPanel() {
   document.getElementById('draftPanel').classList.remove('visible');
   currentDraftId = null; currentPreviews = []; localEdits = {};
   isEditMode = false;
+  const upload = document.getElementById('pdfUploadInput');
+  if (upload) upload.value = '';
 }
 function cancelDraft() { hideDraftPanel(); showToast('Draft cancelled.', ''); }
 
@@ -1332,6 +1463,13 @@ async function doConfirmSend() {
     saveEditsToLocal();
     for (let i = 0; i < currentPreviews.length; i++) {
       const edit = localEdits[i];
+      const toList = splitToEmails(edit.to);
+      const badTo = toList.find(e => !isValidEmail(e));
+      if (!toList.length || badTo) {
+        showToast(badTo ? 'Invalid To email: ' + badTo : 'Please enter at least one To email.', 'error');
+        return;
+      }
+      edit.to = toList.join(', ');
       await fetch('/api/update_draft', {
         method : 'POST',
         headers: { 'Content-Type': 'application/json' },
