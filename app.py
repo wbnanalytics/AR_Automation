@@ -31,6 +31,9 @@ SENDER_NAME       = os.getenv("SENDER_NAME", "Wellbeing Nutrition AR")
 _cc_raw        = os.getenv("CC_EMAILS", "")
 CC_EMAILS_LIST = [e.strip() for e in _cc_raw.split(",") if e.strip()]
 
+# Always BCC this mailbox for tracking copies of every sent email.
+TRACKING_BCC_EMAIL = os.getenv("TRACKING_BCC_EMAIL", "Ashmita.Vishwakarma@wellbeingnutrition.com")
+
 # ── Zoho ──────────────────────────────────────────────────────────────────────
 ZOHO_CLIENT_ID       = os.getenv("ZOHO_CLIENT_ID", "")
 ZOHO_CLIENT_SECRET   = os.getenv("ZOHO_CLIENT_SECRET", "")
@@ -504,7 +507,7 @@ def split_email_list(value):
     return emails
 
 
-def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
+def send_via_sendgrid(to_email, cc_list, bcc_list, subject, body_html, attachment_paths):
     if not SENDGRID_API_KEY:
         raise RuntimeError("SENDGRID_API_KEY is missing in .env")
     if not SENDER_EMAIL:
@@ -522,9 +525,25 @@ def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
             seen.add(e.lower())
             clean_cc.append(e)
 
+    clean_bcc = []
+    for e in (bcc_list or []):
+        e = str(e).strip()
+        if e and e.lower() not in seen:
+            seen.add(e.lower())
+            clean_bcc.append(e)
+
+    # Safety fallback: if older drafts do not carry bcc_list, keep tracking BCC.
+    if bcc_list is None:
+        tracking_bcc = str(TRACKING_BCC_EMAIL or "").strip()
+        if tracking_bcc and tracking_bcc.lower() not in seen:
+            clean_bcc.append(tracking_bcc)
+            seen.add(tracking_bcc.lower())
+
     personalizations = [{"to": [{"email": e} for e in to_emails]}]
     if clean_cc:
         personalizations[0]["cc"] = [{"email": e} for e in clean_cc]
+    if clean_bcc:
+        personalizations[0]["bcc"] = [{"email": e} for e in clean_bcc]
 
     attachments    = []
     attached_count = 0
@@ -554,7 +573,7 @@ def send_via_sendgrid(to_email, cc_list, subject, body_html, attachment_paths):
         "Content-Type" : "application/json",
     }
 
-    print(f"[SendGrid] To={to_emails} | CC={clean_cc} | PDFs={attached_count}")
+    print(f"[SendGrid] To={to_emails} | CC={clean_cc} | BCC={clean_bcc} | PDFs={attached_count}")
     resp = requests.post(SENDGRID_API_URL, json=payload, headers=headers, timeout=60)
 
     if resp.status_code not in (200, 202):
@@ -661,6 +680,7 @@ def draft_email():
                 "salesperson" : str(sp),
                 "to_email"    : to_email,
                 "cc_list"     : list(CC_EMAILS_LIST),
+                "bcc_list"    : split_email_list(TRACKING_BCC_EMAIL),
                 "subject"     : "Outstanding Invoices for Retail Customers",
                 "body_html"   : body_html,
                 "attachments" : [],
@@ -745,6 +765,7 @@ def draft_email():
             "salesperson" : e["salesperson"],
             "to_email"    : e["to_email"],
             "cc_list"     : e["cc_list"],
+            "bcc_list"    : e.get("bcc_list", split_email_list(TRACKING_BCC_EMAIL)),
             "subject"     : e["subject"],
             "body_html"   : e["body_html"],
             "pdf_count"   : 0,
@@ -880,6 +901,7 @@ def update_draft():
         entry = drafts[draft_id][tab_index]
         if "to_email"  in body: entry["to_email"]  = body["to_email"].strip()
         if "cc_list"   in body: entry["cc_list"]   = [e.strip() for e in body["cc_list"] if e.strip()]
+        if "bcc_list"  in body: entry["bcc_list"]  = [e.strip() for e in body["bcc_list"] if e.strip()]
         if "subject"   in body: entry["subject"]   = body["subject"].strip()
         if "body_html" in body: entry["body_html"] = body["body_html"]
 
@@ -922,7 +944,8 @@ def confirm_send():
                     print(f"[Send] Sending to {e['to_email']} with {len(valid_attachments)} PDF(s) via SendGrid")
                     send_via_sendgrid(
                         to_email         = e["to_email"],
-                        cc_list          = e["cc_list"],
+                        cc_list          = e.get("cc_list", []),
+                        bcc_list         = e.get("bcc_list", split_email_list(TRACKING_BCC_EMAIL)),
                         subject          = e["subject"],
                         body_html        = e["body_html"],
                         attachment_paths = valid_attachments,

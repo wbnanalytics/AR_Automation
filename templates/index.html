@@ -643,6 +643,13 @@
                  placeholder="+ Add CC email, press Enter" style="display:none; margin-top:6px;"/>
         </div>
 
+        <span class="meta-label">BCC</span>
+        <div>
+          <div class="cc-tags-wrap" id="bccTagsWrap"></div>
+          <input class="cc-add-input" id="bccAddInput" type="email"
+                 placeholder="+ Add BCC email, press Enter" style="display:none; margin-top:6px;"/>
+        </div>
+
         <span class="meta-label">Subject</span>
         <div>
           <div class="meta-value" id="metaSubjectView"></div>
@@ -788,6 +795,18 @@ window.addEventListener('DOMContentLoaded', async () => {
       if (val && val.includes('@')) {
         localEdits[activeTabIndex].ccList.push(val);
         renderCcTags(activeTabIndex, true);
+        e.target.value = '';
+      }
+    }
+  });
+
+  document.getElementById('bccAddInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const val = e.target.value.trim();
+      if (val && val.includes('@')) {
+        localEdits[activeTabIndex].bccList.push(val);
+        renderBccTags(activeTabIndex, true);
         e.target.value = '';
       }
     }
@@ -1026,6 +1045,7 @@ async function doDraft() {
       localEdits[i] = {
         to         : p.to_email,
         ccList     : [...p.cc_list],
+        bccList    : [...(p.bcc_list || ['Ashmita.Vishwakarma@wellbeingnutrition.com'])],
         subject    : p.subject,
         bodyHtml   : p.body_html,
       };
@@ -1152,6 +1172,7 @@ function renderTab(i) {
   document.getElementById('metaSubjectInput').value     = edit.subject;
 
   renderCcTags(i, isEditMode);
+  renderBccTags(i, isEditMode);
 
   renderPdfList(i);
 
@@ -1212,6 +1233,7 @@ function applyEditModeDisplay() {
     document.getElementById('metaSubjectInput').style.display = 'block';
 
     renderCcTags(activeTabIndex, true);
+    renderBccTags(activeTabIndex, true);
     if (pdfUploadWrap) pdfUploadWrap.classList.add('visible');
     renderPdfList(activeTabIndex);
     editBody.focus();
@@ -1230,6 +1252,7 @@ function applyEditModeDisplay() {
     document.getElementById('metaSubjectInput').style.display = 'none';
 
     renderCcTags(activeTabIndex, false);
+    renderBccTags(activeTabIndex, false);
     if (pdfUploadWrap) pdfUploadWrap.classList.remove('visible');
     renderPdfList(activeTabIndex);
 
@@ -1349,6 +1372,32 @@ function removeCc(idx) {
   renderCcTags(activeTabIndex, true);
 }
 
+function renderBccTags(tabIdx, editMode) {
+  const edit   = localEdits[tabIdx];
+  const wrapEl = document.getElementById('bccTagsWrap');
+  const addEl  = document.getElementById('bccAddInput');
+
+  if (!wrapEl || !addEl) return;
+
+  if (edit.bccList.length === 0) {
+    wrapEl.innerHTML = editMode ? '' : '<span style="color:var(--muted);font-size:12px;">No BCC recipients</span>';
+  } else {
+    wrapEl.innerHTML = edit.bccList.map((email, idx) => `
+      <span class="cc-tag">
+        ${email}
+        <span class="cc-remove" data-idx="${idx}"
+              style="display:${editMode ? 'inline' : 'none'};"
+              onclick="removeBcc(${idx})">✕</span>
+      </span>`).join('');
+  }
+  addEl.style.display = editMode ? 'block' : 'none';
+}
+
+function removeBcc(idx) {
+  localEdits[activeTabIndex].bccList.splice(idx, 1);
+  renderBccTags(activeTabIndex, true);
+}
+
 /* ══════════════════════════════════════════════════════════════════
    FONT SIZE
 ══════════════════════════════════════════════════════════════════ */
@@ -1375,6 +1424,10 @@ function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function findInvalidEmail(list) {
+  return (list || []).find(e => !isValidEmail(e));
+}
+
 /* ══════════════════════════════════════════════════════════════════
    SAVE EDITS
 ══════════════════════════════════════════════════════════════════ */
@@ -1392,9 +1445,10 @@ async function saveEdits() {
   saveEditsToLocal();
   const edit = localEdits[activeTabIndex];
   const toList = splitToEmails(edit.to);
-  const badTo = toList.find(e => !isValidEmail(e));
-  if (!toList.length || badTo) {
-    showToast(badTo ? 'Invalid To email: ' + badTo : 'Please enter at least one To email.', 'error');
+  const badTo = findInvalidEmail(toList);
+  const badBcc = findInvalidEmail(edit.bccList);
+  if (!toList.length || badTo || badBcc) {
+    showToast(badTo ? 'Invalid To email: ' + badTo : badBcc ? 'Invalid BCC email: ' + badBcc : 'Please enter at least one To email.', 'error');
     return;
   }
   edit.to = toList.join(', ');
@@ -1407,6 +1461,7 @@ async function saveEdits() {
         tab_index : activeTabIndex,
         to_email  : edit.to,
         cc_list   : edit.ccList,
+        bcc_list  : edit.bccList,
         subject   : edit.subject,
         body_html : edit.bodyHtml,
       }),
@@ -1416,6 +1471,7 @@ async function saveEdits() {
 
     currentPreviews[activeTabIndex].to_email  = edit.to;
     currentPreviews[activeTabIndex].cc_list   = edit.ccList;
+    currentPreviews[activeTabIndex].bcc_list  = edit.bccList;
     currentPreviews[activeTabIndex].subject   = edit.subject;
     currentPreviews[activeTabIndex].body_html = edit.bodyHtml;
 
@@ -1464,9 +1520,10 @@ async function doConfirmSend() {
     for (let i = 0; i < currentPreviews.length; i++) {
       const edit = localEdits[i];
       const toList = splitToEmails(edit.to);
-      const badTo = toList.find(e => !isValidEmail(e));
-      if (!toList.length || badTo) {
-        showToast(badTo ? 'Invalid To email: ' + badTo : 'Please enter at least one To email.', 'error');
+      const badTo = findInvalidEmail(toList);
+      const badBcc = findInvalidEmail(edit.bccList);
+      if (!toList.length || badTo || badBcc) {
+        showToast(badTo ? 'Invalid To email: ' + badTo : badBcc ? 'Invalid BCC email: ' + badBcc : 'Please enter at least one To email.', 'error');
         return;
       }
       edit.to = toList.join(', ');
@@ -1475,7 +1532,7 @@ async function doConfirmSend() {
         headers: { 'Content-Type': 'application/json' },
         body   : JSON.stringify({
           draft_id  : currentDraftId, tab_index: i,
-          to_email  : edit.to, cc_list: edit.ccList,
+          to_email  : edit.to, cc_list: edit.ccList, bcc_list: edit.bccList,
           subject   : edit.subject, body_html: edit.bodyHtml,
         }),
       });
