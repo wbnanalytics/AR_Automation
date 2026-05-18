@@ -722,15 +722,18 @@ function openInsightDetail(type, key) {
   const unused = rows.reduce((s,r) => s + (r.unused || 0), 0);
   const customers = new Set(rows.map(r => r.customer)).size;
   const invoices = rows.length;
+  const showUnused = (type === 'kpi' && key === 'credits');
 
   document.getElementById('detailModalTitle').textContent = insightTitle(type, key);
-  document.getElementById('detailModalSub').textContent = `${invoices} invoices · ${customers} customers · ${fmtFullINR(total)} outstanding · ${fmtFullINR(unused)} unused credits`;
+  document.getElementById('detailModalSub').textContent = showUnused
+    ? `${invoices} invoices · ${customers} customers · ${fmtFullINR(total)} outstanding · ${fmtFullINR(unused)} unused credits`
+    : `${invoices} invoices · ${customers} customers · ${fmtFullINR(total)} outstanding`;
 
   const summaryHtml = `<div class="detail-summary-grid">
     <div class="detail-summary-card"><div class="detail-summary-label">Invoices</div><div class="detail-summary-value">${invoices}</div></div>
     <div class="detail-summary-card"><div class="detail-summary-label">Customers</div><div class="detail-summary-value">${customers}</div></div>
     <div class="detail-summary-card"><div class="detail-summary-label">Outstanding</div><div class="detail-summary-value">${fmtFullINR(total)}</div></div>
-    <div class="detail-summary-card"><div class="detail-summary-label">Unused Credits</div><div class="detail-summary-value">${fmtFullINR(unused)}</div></div>
+    ${showUnused ? `<div class="detail-summary-card"><div class="detail-summary-label">Unused Credits</div><div class="detail-summary-value">${fmtFullINR(unused)}</div></div>` : ''}
   </div>`;
 
   if (!rows.length) {
@@ -746,10 +749,10 @@ function openInsightDetail(type, key) {
       <td class="col-date">${escHtml(r.due_date || '')}</td>
       <td class="col-age">${escHtml(r.age ?? '')}</td>
       <td class="col-money">${fmtFullINR(r.balance || 0)}</td>
-      <td class="col-money">${fmtFullINR(r.unused || 0)}</td>
+      ${showUnused ? `<td class="col-money">${fmtFullINR(r.unused || 0)}</td>` : ''}
     </tr>`).join('');
     document.getElementById('detailModalBody').innerHTML = summaryHtml + `<div class="detail-table-wrap"><table class="detail-table">
-      <thead><tr><th class="col-invoice">Invoice No</th><th class="col-customer">Customer</th><th class="col-channel">Channel</th><th class="col-salesperson">Salesperson</th><th class="col-date">Invoice Date</th><th class="col-date">Due Date</th><th class="col-age">Age</th><th class="col-money">Balance</th><th class="col-money">Unused</th></tr></thead>
+      <thead><tr><th class="col-invoice">Invoice No</th><th class="col-customer">Customer</th><th class="col-channel">Channel</th><th class="col-salesperson">Salesperson</th><th class="col-date">Invoice Date</th><th class="col-date">Due Date</th><th class="col-age">Age</th><th class="col-money">Balance</th>${showUnused ? `<th class="col-money">Unused</th>` : ''}</tr></thead>
       <tbody>${tableRows}</tbody>
     </table></div>`;
   }

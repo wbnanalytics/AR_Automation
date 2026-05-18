@@ -728,6 +728,10 @@
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
         Save Changes
       </button>
+      <button class="btn btn-secondary" id="btnSaveDraft" onclick="saveDraftForLater()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save Draft
+      </button>
       <button class="btn btn-send" id="btnConfirmSend" onclick="doConfirmSend()">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
         <span id="btnConfirmLabel">Confirm &amp; Send</span>
@@ -762,6 +766,7 @@ let currentPreviews = [];
 let activeTabIndex  = 0;
 let isEditMode      = false;
 let localEdits      = {};
+const SAVED_DRAFT_KEY = 'ar_email_dashboard_saved_draft_v1';
 
 /* ══════════════════════════════════════════════════════════════════
    INIT
@@ -811,6 +816,8 @@ window.addEventListener('DOMContentLoaded', async () => {
       }
     }
   });
+
+  restoreSavedDraft();
 });
 
 /* ── Autocomplete ── */
@@ -1036,6 +1043,7 @@ async function doDraft() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
+    clearSavedDraft();
     currentDraftId  = data.draft_id;
     currentPreviews = data.previews;
     activeTabIndex  = 0;
@@ -1066,6 +1074,72 @@ async function doDraft() {
   } finally {
     btn.disabled = false; label.textContent = 'Preview Draft'; spinner.style.display = 'none';
   }
+}
+
+
+/* ══════════════════════════════════════════════════════════════════
+   SAVE / RESTORE DRAFT
+══════════════════════════════════════════════════════════════════ */
+function saveDraftForLater() {
+  if (!currentDraftId || !currentPreviews.length) {
+    showToast('No draft available to save.', 'error');
+    return;
+  }
+
+  if (isEditMode) saveEditsToLocal();
+
+  const savedDraft = {
+    draft_id       : currentDraftId,
+    previews       : currentPreviews,
+    active_tab     : activeTabIndex,
+    local_edits    : localEdits,
+    saved_at       : new Date().toISOString(),
+  };
+
+  try {
+    localStorage.setItem(SAVED_DRAFT_KEY, JSON.stringify(savedDraft));
+    showToast('Draft saved. You can come back to Email Dashboard and continue.', 'success');
+  } catch(e) {
+    showToast('Could not save draft in browser: ' + e.message, 'error');
+  }
+}
+
+function restoreSavedDraft() {
+  try {
+    const raw = localStorage.getItem(SAVED_DRAFT_KEY);
+    if (!raw) return;
+
+    const saved = JSON.parse(raw);
+    if (!saved || !saved.draft_id || !Array.isArray(saved.previews) || !saved.previews.length) return;
+
+    currentDraftId  = saved.draft_id;
+    currentPreviews = saved.previews;
+    activeTabIndex  = Number(saved.active_tab || 0);
+    localEdits      = saved.local_edits || {};
+
+    currentPreviews.forEach((p, i) => {
+      if (!localEdits[i]) {
+        localEdits[i] = {
+          to         : p.to_email,
+          ccList     : [...(p.cc_list || [])],
+          bccList    : [...(p.bcc_list || ['Ashmita.Vishwakarma@wellbeingnutrition.com'])],
+          subject    : p.subject,
+          bodyHtml   : p.body_html,
+        };
+      }
+    });
+
+    isEditMode = false;
+    showDraftPanel();
+    switchTab(Math.min(activeTabIndex, currentPreviews.length - 1));
+    showToast('Saved draft restored.', 'success');
+  } catch(e) {
+    console.warn('Saved draft restore failed:', e);
+  }
+}
+
+function clearSavedDraft() {
+  try { localStorage.removeItem(SAVED_DRAFT_KEY); } catch(e) {}
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -1501,7 +1575,7 @@ function hideDraftPanel() {
   const upload = document.getElementById('pdfUploadInput');
   if (upload) upload.value = '';
 }
-function cancelDraft() { hideDraftPanel(); showToast('Draft cancelled.', ''); }
+function cancelDraft() { clearSavedDraft(); hideDraftPanel(); showToast('Draft cancelled.', ''); }
 
 /* ══════════════════════════════════════════════════════════════════
    CONFIRM & SEND
@@ -1562,6 +1636,7 @@ async function doConfirmSend() {
 
     const sendId = data.send_id;
     if (sendId) {
+      clearSavedDraft();
       hideDraftPanel();
       showToast('📤 Sending email… please wait.', '');
       btn.disabled = false; label.textContent = 'Confirm & Send'; spinner.style.display = 'none';
@@ -1580,6 +1655,7 @@ async function doConfirmSend() {
       return;
     }
 
+    clearSavedDraft();
     hideDraftPanel();
     showToast(data.message || 'Email sent!', 'success');
   } catch(e) {

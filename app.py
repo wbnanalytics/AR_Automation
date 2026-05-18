@@ -75,6 +75,14 @@ drafts       = {}
 pdf_status   = {}
 send_results = {}
 
+# ── DATA CACHE ────────────────────────────────────────────────────────────────
+# Keeps the Google Drive Excel data in memory so every page/API call does not
+# download and process the spreadsheet again.
+DATA_CACHE_TTL_SECONDS = int(os.getenv("DATA_CACHE_TTL_SECONDS", "300"))  # 5 minutes
+_data_cache = {"df": None, "loaded_at": 0}
+_data_cache_lock = threading.Lock()
+
+
 
 def safe_upload_filename(filename):
     """Return a safe PDF filename without requiring extra dependencies."""
@@ -287,8 +295,55 @@ def format_currency_plain(value):
 
 
 def get_unused_credit(df):
-    credits = df["Unused_Credits"].dropna()
-    return float(credits.iloc[0]) if not credits.empty else 0
+    """
+    Return unused credit correctly without depending on row order.
+
+    In the source sheet, a customer's unused credit may appear on only one invoice row
+    while other invoice rows for the same customer show 0. Earlier logic picked the
+    first non-blank value, so if the first row was 0 the dashboard showed ₹ 0.
+
+    For each customer, take the highest positive unused credit available, then sum
+    across customers. This avoids missing credits and also avoids double-counting
+    when the same credit is repeated on multiple invoice rows.
+    """
+    if df is None or df.empty or "Unused_Credits" not in df.columns:
+        return 0.0
+
+    temp = df.copy()
+    temp["Unused_Credits"] = pd.to_numeric(temp["Unused_Credits"], errors="coerce").fillna(0)
+
+    if "Customer_Name" in temp.columns:
+        customer_credit = temp.groupby("Customer_Name", dropna=False)["Unused_Credits"].max()
+        return float(customer_credit[customer_credit > 0].sum())
+
+    credits = temp["Unused_Credits"]
+    return float(credits.max()) if not credits.empty and credits.max() > 0 else 0.0
+
+def remove_negative_net_customers_for_draft(df):
+    """
+    Used only while generating draft emails.
+
+    Customers whose unused credit is higher than their outstanding amount create
+    a negative net outstanding. They should remain visible in dashboard/search
+    screens, but should not be included inside the drafted email body, summary,
+    or PDF attachment list.
+    """
+    if df is None or df.empty or "Customer_Name" not in df.columns:
+        return df
+
+    keep_groups = []
+    for _, customer_df in df.groupby("Customer_Name", dropna=False):
+        total = customer_df["Balance_Due"].fillna(0).sum()
+        unused = get_unused_credit(customer_df)
+        net = total - unused
+        if net >= 0:
+            keep_groups.append(customer_df)
+
+    if not keep_groups:
+        return df.iloc[0:0].copy()
+
+    return pd.concat(keep_groups, ignore_index=True)
+
 
 
 def validate_columns(df):
@@ -297,7 +352,8 @@ def validate_columns(df):
         raise KeyError(f"Missing columns: {', '.join(sorted(missing))}")
 
 
-def load_data():
+def load_data_raw():
+    """Load and clean the latest Excel data from Google Drive/local file."""
     if USE_GDRIVE:
         df = load_excel_from_gdrive()
     else:
@@ -324,6 +380,32 @@ def load_data():
     df["Unused_Credits"] = clean_numeric(df["Unused_Credits"])
     return df.sort_values(SORT_COLUMNS).reset_index(drop=True)
 
+
+def load_data(force_refresh=False):
+    """
+    Cached data loader.
+
+    Normal page/API calls reuse the cleaned dataframe for DATA_CACHE_TTL_SECONDS.
+    Refresh button can call APIs with ?refresh=1 to force latest Google Drive data.
+    """
+    now = time.time()
+
+    with _data_cache_lock:
+        cached_df = _data_cache.get("df")
+        loaded_at = _data_cache.get("loaded_at", 0)
+
+        if (
+            not force_refresh
+            and cached_df is not None
+            and (now - loaded_at) < DATA_CACHE_TTL_SECONDS
+        ):
+            return cached_df.copy()
+
+        df = load_data_raw()
+        _data_cache["df"] = df
+        _data_cache["loaded_at"] = now
+        print(f"[Cache] Data refreshed. Rows={len(df)} | TTL={DATA_CACHE_TTL_SECONDS}s")
+        return df.copy()
 
 def apply_aging_filter(df, aging_label):
     if not aging_label or aging_label not in AGING_BUCKETS:
@@ -593,7 +675,8 @@ def index():
 @app.route("/api/options")
 def options():
     try:
-        df = load_data()
+        force_refresh = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+        df = load_data(force_refresh=force_refresh)
         return jsonify({
             "customers"     : sorted(df["Customer_Name"].dropna().unique().tolist()),
             "channels"      : sorted(df["channel_name"].dropna().unique().tolist()),
@@ -608,7 +691,8 @@ def options():
 @app.route("/api/search")
 def search():
     try:
-        df          = load_data()
+        force_refresh = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+        df          = load_data(force_refresh=force_refresh)
         customer    = request.args.get("customer", "").strip()
         salesperson = request.args.get("salesperson", "").strip()
         invoice     = request.args.get("invoice", "").strip()
@@ -666,6 +750,13 @@ def draft_email():
 
         if filtered.empty:
             return jsonify({"error": "No records found for the given filter."}), 404
+
+        # Draft-mail-only rule: do not include customers whose net outstanding is negative.
+        # Search results, dashboard cards, analytics, and preview tables remain unchanged.
+        filtered = remove_negative_net_customers_for_draft(filtered)
+
+        if filtered.empty:
+            return jsonify({"error": "No customers with positive or zero net outstanding found for the draft email."}), 404
 
         all_invoice_nos = filtered["Invoice_no."].dropna().unique().tolist()
         tmp_dir         = tempfile.mkdtemp()
@@ -1001,7 +1092,8 @@ def email_dashboard():
 def analytics_data():
        """Returns all records + pre-computed analytics for the dashboard."""
        try:
-           df = load_data()
+           force_refresh = request.args.get("refresh", "").lower() in ("1", "true", "yes")
+           df = load_data(force_refresh=force_refresh)
  
            records = df_to_records(df)
  
@@ -1013,6 +1105,17 @@ def analytics_data():
            import traceback; traceback.print_exc()
            return jsonify({"error": str(e)}), 500
  
+
+@app.route("/api/cache_status")
+def cache_status():
+    loaded_at = _data_cache.get("loaded_at", 0)
+    return jsonify({
+        "cached": _data_cache.get("df") is not None,
+        "loaded_at": loaded_at,
+        "age_seconds": round(time.time() - loaded_at, 1) if loaded_at else None,
+        "ttl_seconds": DATA_CACHE_TTL_SECONDS,
+    })
+
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
